@@ -23,13 +23,18 @@ world <-
 map <- merge(world, data, by = "countrycode", all = TRUE)
 
 hcimap <-
-  ggplot(map, aes(fill = hc)) +
-  geom_sf(color = "white", linewidth = 0.1) +
-  scale_fill_gradientn(colors = terrain.colors(10, rev = TRUE)) +
+  ggplot() +
+  geom_sf(data = map, aes(fill = hc, color = ""), linewidth = 0.1) +
+  scale_fill_gradientn(
+    colors = terrain.colors(10, rev = TRUE),
+    na.value = "lightgray"
+  ) +
+  scale_color_manual(values = "white") +
   theme_bw() +
   labs(
     title = paste("Human Captial Index (HCI) in", target_year),
-    fill = "HCI"
+    fill = "HCI",
+    color = "Data unavailable"
   ) +
   theme(
     legend.position  = "bottom",

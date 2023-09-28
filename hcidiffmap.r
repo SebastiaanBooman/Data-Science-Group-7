@@ -34,16 +34,19 @@ df <- data.frame(x = c(0), y = c(0), a = 0)
 
 hcidiffmap <-
   ggplot() +
-  geom_sf(data = map, aes(fill = hcdiff), color = "white", linewidth = 0.1) +
-  scale_fill_gradientn(colors = terrain.colors(10, rev = TRUE),
-                       limits = c(-100, NA)) +
-  geom_point(data = df, aes(x = x, y = y, color = "Data unavailable"),
-             alpha = 0) +
+  geom_sf(data = map, aes(fill = hcdiff, color = ""), linewidth = 0.1) +
+  scale_fill_gradientn(
+    colors = terrain.colors(10, rev = TRUE),
+    limits = c(-100, NA),
+    na.value = "lightgray"
+  ) +
+  scale_color_manual(values = "white") +
   theme_bw() +
   labs(
     title = paste("Human Captial Index change (HCI) between", start_year,
                   "and", end_year),
     fill = "HCI",
+    color = "Data unavailable"
   ) +
   theme(
     legend.position  = "bottom",
