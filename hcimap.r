@@ -5,7 +5,7 @@ if (length(newpkgs) > 0)
   install.packages(newpkgs)
 lapply(pkgs, library, character.only = TRUE)
 
-target_year <- "2017"
+target_year <- "2019"
 
 ## Import and clean PWT
 data <-
@@ -25,7 +25,7 @@ map <- merge(world, data, by = "countrycode", all = TRUE)
 hcimap <-
   ggplot(map, aes(fill = hc)) +
   geom_sf(color = "white", linewidth = 0.1) +
-  scale_fill_gradientn(colors = rev(terrain.colors(10))) +
+  scale_fill_gradientn(colors = terrain.colors(10, rev = TRUE)) +
   theme_bw() +
   labs(
     title = paste("Human Captial Index (HCI) in", target_year),
