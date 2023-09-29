@@ -30,28 +30,27 @@ world <-
 
 map <- merge(world, diffdata, by = "countrycode", all = TRUE)
 
-df <- data.frame(x = c(0), y = c(0), a = 0)
-
 hcidiffmap <-
   ggplot() +
-  geom_sf(data = map, aes(fill = hcdiff, color = ""), linewidth = 0.1) +
+  geom_sf(data = map, aes(fill = hcdiff, color = "Data unavailable"), linewidth = 0.1) +
   scale_fill_gradientn(
     colors = terrain.colors(10, rev = TRUE),
-    limits = c(-100, NA),
-    na.value = "lightgray"
+    limits = c(-100, NA),#,
+    na.value = "gray50"
   ) +
-  scale_color_manual(values = "white") +
   theme_bw() +
+  scale_color_manual(values = "black" ) +
+  guides(color = guide_legend(override.aes = list(fill = "gray50"))) +
   labs(
     title = paste("Human Captial Index change (HCI) between", start_year,
                   "and", end_year),
-    fill = "HCI",
-    color = "Data unavailable"
+    fill = "HCI",#,
+    color = ""
   ) +
   theme(
     legend.position  = "bottom",
     legend.box       = "horizontal",
-    panel.border     = element_blank(),
+    panel.border     = element_rect(colour = "black", fill=NA, size=1),
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
     axis.text.x      = element_blank(),
@@ -59,3 +58,6 @@ hcidiffmap <-
     axis.text.y      = element_blank(),
     axis.ticks.y     = element_blank()
   )
+
+hcidiffmap 
+
