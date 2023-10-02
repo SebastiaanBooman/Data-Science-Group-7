@@ -1,5 +1,7 @@
-source("../utils.r", chdir = TRUE)
-pacman::p_load(dplyr, ggplot2, readxl, rnaturalearth, rnaturalearthdata)
+source("../utils/install_and_load_pacman.r", chdir = TRUE)
+source("../utils/load_pwt.r", chdir = TRUE)
+source("../utils/plot_map.r", chdir = TRUE)
+pacman::p_load(dplyr)
 
 hcimap <- function(start_year, end_year = start_year) {
   force(end_year)
