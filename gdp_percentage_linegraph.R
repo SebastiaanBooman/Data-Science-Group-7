@@ -1,5 +1,5 @@
 ## Load and install missing packages
-pkgs <- c("readxl", "dplyr", "ggplot2", "rnaturalearth", "rnaturalearthdata")
+pkgs <- c("readxl", "dplyr", "ggplot2")
 newpkgs <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
 if (length(newpkgs) > 0)
   install.packages(newpkgs)
@@ -27,19 +27,16 @@ sum_rgdpo_data <- data %>%
 create_percentage_fluctuation_df <- function(sum_gdp_data){
   percentage_change <- c()
   years <- c()
-  for (i in seq(0, nrow(sum_gdp_data),1)){
-    if ((START_YEAR + i + 1) > END_YEAR) {
-      break
-    } else {
+  for (i in seq(0, nrow(sum_gdp_data) -1,1)){
       old = subset(sum_gdp_data, year == (START_YEAR + i))
       new = subset(sum_gdp_data, year == (START_YEAR + i + 1))
       percentual_change <- (new$sum_gdp - old$sum_gdp) / old$sum_gdp * 100
       percentage_change <- append(percentage_change, percentual_change)
       years <- append(years, new$year)
-      }
     }
-    return(data.frame(years, percentage_change))
+  return(data.frame(years, percentage_change))
 }
+
 
 rgdpe_dataframe <- create_percentage_fluctuation_df(sum_rgdpe_data)
 rgdpo_dataframe <- create_percentage_fluctuation_df(sum_rgdpo_data)
