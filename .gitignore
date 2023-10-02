@@ -2,4 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
-*png
+*.png
+*.exe
+*.chromedriver
