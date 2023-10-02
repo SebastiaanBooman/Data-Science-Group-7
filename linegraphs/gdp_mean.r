@@ -1,16 +1,12 @@
-## Load and install missing packages
-pkgs <- c("readxl", "dplyr", "ggplot2", "rnaturalearth", "rnaturalearthdata")
-newpkgs <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]
-if (length(newpkgs) > 0)
-  install.packages(newpkgs)
-lapply(pkgs, library, character.only = TRUE)
+source("../utils.r", chdir = TRUE)
+pacman::p_load(dplyr, ggplot2, readxl, rnaturalearth, rnaturalearthdata)
 
 START_YEAR <- "1990"
 END_YEAR <- "2019"
 
 ## Import and clean PWT
 data <-
-  read_xlsx("pwt1001.xlsx", sheet = "Data") %>%
+  pwt() %>%
   filter(year >= START_YEAR & year <= END_YEAR) %>%
   filter(!is.na(rgdpe)) %>%
   select(c("year", "countrycode", "rgdpe"))
