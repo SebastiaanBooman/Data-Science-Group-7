@@ -1,7 +1,4 @@
-source("../utils/install_and_load_pacman.r", chdir = TRUE)
-source("../utils/load_pwt.r", chdir = TRUE)
-source("../utils/plot_map.r", chdir = TRUE)
-pacman::p_load(dplyr)
+source("utils.r", chdir = TRUE)
 
 gdpmap <- function(start_year, end_year = start_year, mean = FALSE) {
   force(end_year)

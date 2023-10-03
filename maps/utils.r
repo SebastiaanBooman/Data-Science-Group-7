@@ -1,3 +1,5 @@
+source("../common.r", chdir = TRUE)
+
 plot_map <- function(data, value) {
   pacman::p_load(dplyr)
   pacman::p_load(ggplot2)
