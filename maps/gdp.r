@@ -60,6 +60,21 @@ gdpmap <- function(start_year, end_year = start_year, mean = FALSE) {
     scale_fill_gradientn(
       colors = map_colors,
       limits = map_limits,
+      guide = guide_colorbar(barwidth = 10),
+      labels = function(breaks) {
+        ## Use default breaks if no limits have been specified
+        if (length(map_limits) == 0)
+          return(breaks)
+
+        numbreaks <- (map_limits[2] - map_limits[1]) / (length(breaks) - 1)
+        labs <- paste(seq(map_limits[1], map_limits[2], numbreaks), "%",
+                      sep = "")
+
+        labs[1] <- paste("<", labs[1], sep = " ")
+        labs[length(labs)] <- paste(">", labs[length(labs)], sep = " ")
+
+        return(labs)
+      },
       oob = scales::squish,
       na.value = "gray"
     ) +
