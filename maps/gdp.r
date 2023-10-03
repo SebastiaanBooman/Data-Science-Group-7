@@ -26,23 +26,28 @@ gdpmap <- function(start_year, end_year = start_year, mean = FALSE) {
       mutate(value = (gdp / pop) / 1000) %>%
       select(c("countrycode", "value"))
   } else if (mean == TRUE) {
-    map_title <- paste("Mean GDP per capita between",
-                       start_year, "and", end_year, "(in billion USD)")
-    map_colors <- c("#FF0000", "#00EE00", "#008800")
-    map_limits <- c()
+    map_title <- paste("Average GDP per capita growth between",
+                       start_year, "and", end_year, "(in %)")
+    map_colors <- c("#FF0000", "#FFFFED", "#008800")
+    map_limits <- c(-5, 5)
 
     ## Calculate the difference in GDP between start_year and end_year
     data <-
       data %>%
       filter(year >= start_year & year <= end_year) %>%
-      mutate(value = (gdp / pop) / 1000) %>%
-      select(c("countrycode", "value", "year")) %>%
+      mutate(
+        gdp = (gdp / pop) / 1000,
+        dyear = year - lag(year),
+        dgdp = gdp - lag(gdp),
+        growth = (dgdp / dyear) / gdp * 100
+      ) %>%
+      select(c("countrycode", "growth")) %>%
       group_by(countrycode) %>%
-      summarize(value = mean(value))
+      summarize(value = mean(growth))
   } else {
     map_title <- paste("GDP per capita growth between",
                        start_year, "and", end_year, "(in %)")
-    map_colors <- c("#FF0000", "#FFFFFF", "#008800")
+    map_colors <- c("#FF0000", "#FFFFED", "#008800")
     map_limits <- c(-100, 100)
 
     ## Calculate the difference in GDP between start_year and end_year
