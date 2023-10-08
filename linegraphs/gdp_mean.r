@@ -1,5 +1,5 @@
 source("utils.r", chdir = TRUE)
-pacman::p_load(dplyr, ggplot2)
+pacman::p_load(ggplot2)
 
 START_YEAR <- "1990"
 END_YEAR <- "2019"

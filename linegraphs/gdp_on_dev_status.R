@@ -1,6 +1,5 @@
-source("../utils/install_and_load_pacman.r", chdir = TRUE)
-source("../utils/load_pwt.r", chdir = TRUE)
-pacman::p_load(dplyr, stringr, rnaturalearth, ggplot2, tidyverse)
+source("utils.r", chdir = TRUE)
+pacman::p_load(stringr, rnaturalearth, ggplot2)
 
 START_YEAR <- 1990
 END_YEAR <- 2019
