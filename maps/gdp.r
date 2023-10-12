@@ -1,7 +1,4 @@
-source("../utils/install_and_load_pacman.r", chdir = TRUE)
-source("../utils/load_pwt.r", chdir = TRUE)
-source("../utils/plot_map.r", chdir = TRUE)
-pacman::p_load(dplyr)
+source("utils.r", chdir = TRUE)
 
 gdpmap <- function(start_year, end_year = start_year, mean = FALSE) {
   force(end_year)
@@ -15,7 +12,7 @@ gdpmap <- function(start_year, end_year = start_year, mean = FALSE) {
     if (mean == TRUE)
       stop("start_year and end_year must be different when calculating mean")
 
-    map_title <- paste("GDP per captia in", start_year, "(in billion USD)")
+    map_title <- paste("GDP per capita in", start_year, "(in billion USD)")
     map_colors <- c("#FF0000", "#00EE00", "#008800")
     map_limits <- c()
 
@@ -26,23 +23,28 @@ gdpmap <- function(start_year, end_year = start_year, mean = FALSE) {
       mutate(value = (gdp / pop) / 1000) %>%
       select(c("countrycode", "value"))
   } else if (mean == TRUE) {
-    map_title <- paste("Mean GDP per captia between",
-                       start_year, "and", end_year, "(in billion USD)")
-    map_colors <- c("#FF0000", "#00EE00", "#008800")
-    map_limits <- c()
+    map_title <- paste("Average GDP per capita growth between",
+                       start_year, "and", end_year, "(in %)")
+    map_colors <- c("#FF0000", "#FFFFED", "#008800")
+    map_limits <- c(-5, 5)
 
     ## Calculate the difference in GDP between start_year and end_year
     data <-
       data %>%
       filter(year >= start_year & year <= end_year) %>%
-      mutate(value = (gdp / pop) / 1000) %>%
-      select(c("countrycode", "value", "year")) %>%
+      mutate(
+        gdp = (gdp / pop) / 1000,
+        dyear = year - lag(year),
+        dgdp = gdp - lag(gdp),
+        growth = (dgdp / dyear) / gdp * 100
+      ) %>%
+      select(c("countrycode", "growth")) %>%
       group_by(countrycode) %>%
-      summarize(value = mean(value))
+      summarize(value = mean(growth))
   } else {
-    map_title <- paste("Grow in GDP per captia between",
+    map_title <- paste("GDP per capita growth between",
                        start_year, "and", end_year, "(in %)")
-    map_colors <- c("#FF0000", "#FFFFFF", "#0000FF")
+    map_colors <- c("#FF0000", "#FFFFED", "#008800")
     map_limits <- c(-100, 100)
 
     ## Calculate the difference in GDP between start_year and end_year
@@ -60,6 +62,21 @@ gdpmap <- function(start_year, end_year = start_year, mean = FALSE) {
     scale_fill_gradientn(
       colors = map_colors,
       limits = map_limits,
+      guide = guide_colorbar(barwidth = 10),
+      labels = function(breaks) {
+        ## Use default breaks if no limits have been specified
+        if (length(map_limits) == 0)
+          return(breaks)
+
+        numbreaks <- (map_limits[2] - map_limits[1]) / (length(breaks) - 1)
+        labs <- paste(seq(map_limits[1], map_limits[2], numbreaks), "%",
+                      sep = "")
+
+        labs[1] <- paste("<", labs[1], sep = " ")
+        labs[length(labs)] <- paste(">", labs[length(labs)], sep = " ")
+
+        return(labs)
+      },
       oob = scales::squish,
       na.value = "gray"
     ) +
