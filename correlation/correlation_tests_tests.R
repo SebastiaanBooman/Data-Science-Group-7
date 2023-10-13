@@ -1,5 +1,4 @@
-source("../utils/install_and_load_pacman.r", chdir = TRUE)
-source("../utils/load_pwt.r", chdir = TRUE)
+source("utils.r", chdir = TRUE)
 pacman::p_load(dplyr, stringr, ggplot2, rnaturalearth, rnaturalearthdata)
 
 START_YEAR <- 1990
