@@ -5,5 +5,5 @@ pacman::p_load(dplyr)
 
 pwt <- function() {
   pacman::p_load(readxl)
-  return(read_xlsx("../pwt1001.xlsx", sheet = "Data"))
+  return(read_xlsx("../Data/pwt1001.xlsx", sheet = "Data"))
 }
