@@ -1,4 +1,4 @@
-source("utils.r", chdir = TRUE)
+source("utils.R", chdir = TRUE)
 
 gdpmap <- function(start_year, end_year = start_year, mean = FALSE) {
   force(end_year)

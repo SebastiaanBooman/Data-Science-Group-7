@@ -1,4 +1,4 @@
-source("utils.r", chdir = TRUE)
+source("utils.R", chdir = TRUE)
 pacman::p_load(ggplot2)
 
 START_YEAR <- "1990"
