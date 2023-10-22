@@ -117,8 +117,6 @@ visual_corr_check <- function(fortified_model, x_lab, y_lab, title, output_dir){
 }
 
 correlation_hypothesis_test <- function(x_values, y_values, method="pearson", conf_level = 0.95){
-  method="pearson"
-  conf_level = 0.95
   cor_df <- data.frame(test=character(0), result= numeric(0), pass=logical(0))
   significance_value = 1 - conf_level
   #Mean of residuals check
