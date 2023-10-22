@@ -116,10 +116,39 @@ visual_corr_check <- function(fortified_model, x_lab, y_lab, title, output_dir){
   ggsave(paste(output_dir, "normality_check.png", sep="/",collapse = "/"), qq_p, width=1000, height=800, units="px") #TODO: bad design to save like this (no 3NF)
 }
 
-stat_corr_check <- function(linear_model, mean_residual_thresh = 0.005){
-  stat_df <- NULL
+correlation_hypothesis_test <- function(x_values, y_values, method="pearson", conf_level = 0.95){
+  method="pearson"
+  conf_level = 0.95
+  cor_df <- data.frame(test=character(0), result= numeric(0), pass=logical(0))
+  significance_value = 1 - conf_level
   #Mean of residuals check
-  stat_df <- rbind(stat_df, mean_of_residuals_check(linear_model$residuals, mean_residual_thresh))
+  cor_test <- cor.test(x_values, y_values, method=method, conf.level=conf_level)
+  p_val <- cor_test$p.value
+  estimate <- cor_test$estimate
+  cor_df[nrow(cor_df)+1,] <- c(paste("Hypothesis:", method, "estimated"), estimate, "NA")
+  cor_df[nrow(cor_df)+1,] <- c("Hypothesis: significance value", significance_value, "NA")
+  if (p_val < significance_value)
+    cor_df[nrow(cor_df)+1,] <- c("Hypothesis: reject H1 through P-value", p_val, FALSE)
+  else
+    cor_df[nrow(cor_df)+1,] <- c("Hypothesis: reject H1 through P-value", p_val, TRUE)
+  if (estimate >= 0.5 || estimate <= -0.5)
+    cor_df[nrow(cor_df)+1,] <- c("Hypothesis: strong correlation", p_val, TRUE)
+  else
+    cor_df[nrow(cor_df)+1,] <- c("Hypothesis: strong correlation", p_val, FALSE)
+  cor_df[nrow(cor_df)+1,] <- c("Hypothesis: confidence interval", paste(cor_test$conf.int[1],cor_test$conf.int[2]), "NA")
+  return(cor_df)
+}
+
+stat_corr_check <- function(fort_lin_model, mean_residual_thresh = 0.005){
+  stat_df <- data.frame(test=character(0), result= numeric(0), pass=logical(0))
+  #Mean of residuals check
+  stat_df[nrow(stat_df) + 1, ]  <- mean_of_residuals_check(fort_lin_model$.resid, mean_residual_thresh)
+  #Hypothesis testing
+  stat_df <- rbind(stat_df, correlation_hypothesis_test(
+    fort_lin_model$x_values,
+    fort_lin_model$y_values
+    ) 
+  )
   x <- c("test", "result", "pass")
   colnames(stat_df) <- x
   
@@ -129,9 +158,7 @@ stat_corr_check <- function(linear_model, mean_residual_thresh = 0.005){
   write.csv(stat_df, filename, row.names=FALSE)
   
   #TODO: add summary output to (a) csv file
-  #summary <- summary(linear_model)
-  
-  #TODO: hypothesis testing
+  #summary <- summary(lin_model)
 }
 
 lin_model <- lm(joined_data$rgdpna ~ joined_data$avh_by_pop)
@@ -144,10 +171,10 @@ colnames(lin_model_df)[2] = "y_values"
 if (!dir.exists(OUTPUT_DEST)) {dir.create(OUTPUT_DEST)}
 if (!dir.exists(OUT_DIR)) {dir.create(OUT_DIR)}
 visual_corr_check(
-  fortified_model = lin_model_df, 
-  x_lab = "avh by pop", 
+  fortified_model = lin_model_df,
+  x_lab = "avh by pop",
   y_lab = "rgdpna",
-  title = "RGDPNA ~ AVH by pop", 
+  title = "RGDPNA ~ AVH by pop",
   output_dir = OUT_DIR
   )
-stat_corr_check(lin_model, TITLE)
+stat_corr_check(lin_model_df, TITLE)
