@@ -12,37 +12,67 @@ save_plots <- function(filename, title = "", ...) {
     return()
   }
 
-  plot_theme <- theme(plot.title = element_text(face = "bold"))
+  plot_theme <- theme(
+    plot.background = element_blank(),
+    plot.title = element_text(color = "white", face = "bold")
+  )
 
   if (length(plots) > 1) {
     result <- patchwork::wrap_plots(plots) +
       patchwork::plot_annotation(
-        title = title,
-        tag_levels = "A",
+        #title = title,
+        #tag_levels = "A",
         theme = plot_theme
       )
+    ggsave(filename, result, width = 12, height = 6)
   } else {
-    result <- plots[[1]] + ggtitle(title) + plot_theme
+    result <- plots[[1]] + plot_theme #+ ggtitle(title)
+    ggsave(filename, result, width = 8, height = 6)
   }
 
   # TODO: calculate fitting width and height values automatically
-  ggsave(filename, result, width = 16, height = 8)
 }
 
 ## Plot the desired correlation test
-plot_cor_test <- function(dataframe, xlab, ylab, title = "", geom_point = FALSE,
-                          zero_line = FALSE, abline = FALSE, smooth = FALSE,
-                          stat_smooth = FALSE) {
+plot_cor_test <- function(dataframe,
+                          title = "", subtitle = "",
+                          xlab = "x", ylab = "y",
+                          geom_point = FALSE, zero_line = FALSE,
+                          abline = FALSE, smooth = FALSE, stat_smooth = FALSE) {
   pacman::p_load(ggplot2)
 
   plot <- ggplot(dataframe, aes(dataframe[, 1], dataframe[, 2])) +
-    xlab(xlab) +
-    ylab(ylab) +
-    ggtitle(title) +
-    theme_bw()
+    labs(
+      title = title,
+      subtitle = subtitle,
+      x = xlab,
+      y = ylab
+    ) +
+    theme(
+      line = element_line(color = "white", linewidth = .5, linetype = 1,
+                          lineend = "butt"),
+      rect = element_rect(fill = NA, color = NA, linewidth = .5, linetype = 1),
+      text = element_text(color = "lightgray"),
+
+      axis.text.x = element_text(color = "white"),
+      axis.text.y = element_text(color = "white"),
+
+      axis.ticks = element_line(color = "white", size = .5),
+
+      axis.line   = element_line(color = "white", size = .5,
+                                 lineend = "square"),
+      axis.line.x = NULL,
+      axis.line.y = NULL,
+
+      panel.background = element_blank(),
+      panel.border     = element_blank(),
+      panel.grid       = element_blank(),
+
+      plot.background   = element_blank()
+    )
 
   if (geom_point)
-    plot <- plot + geom_point()
+    plot <- plot + geom_point(color = "white")
 
   if (abline)
     plot <- plot + geom_smooth(method = "lm", se = FALSE) #geom_abline()
@@ -57,43 +87,49 @@ plot_cor_test <- function(dataframe, xlab, ylab, title = "", geom_point = FALSE,
       stat_smooth(method = "loess", span = 0.1, colour = I("red"), se = FALSE)
 
   if (zero_line)
-    plot <- plot + geom_hline(yintercept = 0)
+    plot <- plot + geom_hline(yintercept = 0, color = "white")
 
   return(plot)
 }
 
 ## Generate correlation test plots and save them to a csv file
-save_correlation_plots <- function(lin_model, response, terms,
+save_correlation_plots <- function(lin_model, dependent_name, independent_name,
                                    output_dir) {
-  title <- paste(response, "~", terms)
+  title <- paste(dependent_name, "~", independent_name)
 
   ## Linearity plots
   regres_p <- plot_cor_test(
     # TODO: Subset?
     dataframe = data.frame(lin_model$response, lin_model$terms),
-    xlab = terms,
-    ylab = response,
-    title = paste(response, "vs", terms),
+    title = "Regression Plot",
+    xlab = independent_name,
+    ylab = dependent_name,
+    subtitle = paste(
+      "S = ", round(sqrt(diag(vcov(lm(lin_model$response ~ lin_model$terms)))),
+                    2), "  ",
+      "R-Sq = ", round(cor(lin_model$response, lin_model$terms) ^ 2, 2), "  ",
+      sep = ""
+    ),
     geom_point = TRUE,
     abline =  TRUE
   )
   resid_fitted_p <- plot_cor_test(
     # TODO: Subset?
     dataframe = data.frame(lin_model$.fitted, lin_model$.resid),
-    xlab = "Fitted values",
+    title = "Residuals vs. Fits",
+    xlab = "Fitted Values",
     ylab = "Residuals",
-    title = "Residuals vs fitted values",
     geom_point = TRUE,
-    zero_line  = TRUE,
-    smooth = TRUE
+    zero_line  = TRUE
+    #smooth = TRUE
   )
 
   ## Homoscedasticity plot (+ resid_fitted_p)
   scale_loc_p <- plot_cor_test(
     dataframe = data.frame(lin_model$.fitted, sqrt(abs(lin_model$.stdresid))),
-    xlab = "Fitted values",
+    title = "Scale Location",
+    xlab = "Fitted Values",
     ylab = "sqrt standardized residuals",
-    title = "Scale location",
     geom_point = TRUE,
     smooth = TRUE
   )
@@ -102,9 +138,9 @@ save_correlation_plots <- function(lin_model, response, terms,
   qq_p <- plot_cor_test(
     dataframe = data.frame(qqnorm(lin_model$.stdresid, plot.it = FALSE)[[1]],
                            lin_model$.stdresid),
-    xlab = "Theoretical quantiles",
-    ylab = "Standardized residuals",
     #title = paste("Q-Q Plot:", title),
+    xlab = "Theoretical Quantiles",
+    ylab = "Standardized Residuals",
     geom_point = TRUE,
     abline = TRUE
   )
@@ -124,7 +160,7 @@ save_correlation_plots <- function(lin_model, response, terms,
   )
   save_plots(
     paste(output_dir, "normality.png", sep = "/", collapse = "/"),
-    paste("Q-Q Plot:", title),
+    paste("Quantile-Quantile plot:", title),
     qq_p
   )
 }
@@ -152,7 +188,9 @@ hypothesis_test <- function(responses, terms, method = "pearson",
       paste(test$conf.int[1], test$conf.int[2], sep = " - "), "NA"),
     c("Reject H₀ with p-value", test$p.value,
       test$p.value <= significance_level),
-    c(paste("Strong", method, "correlation coefficient"), test$estimate,
+    c(paste(method, " correlation coefficient >= (-)", strong_threshold,
+            sep = ""),
+      test$estimate,
       test$estimate >= strong_threshold || test$estimate <= -strong_threshold)
   ))
 }
@@ -184,14 +222,23 @@ save_correlation_stats <- function(lin_model, output_dir) {
 
 ## Convenience function to set up a basic linear model and write the results
 ## and plots to disk
-save_correlation_results <- function(data, response, terms, title) {
+save_correlation_results <- function(data, response, terms,
+                                     dependent_name, independent_name) {
   pacman::p_load(ggfortify)
 
   output_root <- "./Correlation/Output"
-  output_dir <- paste(output_root, title, sep = "/", collapse = "/")
+  output_dir <- paste(output_root, independent_name, sep = "/", collapse = "/")
+
+  normalized_data <- data %>% select(c(response, terms)) %>% scale
+  normalized_data <- data.frame(normalized_data)
 
   ## Prepare the linear model and convert it to a ggplot2 compatible format
-  lin_model <- fortify(lm(data[[response]] ~ data[[terms]]))
+  lin_model <- fortify(lm(normalized_data[[response]] ~ normalized_data[[terms]]))
+
+  #print(head(data[[response]]))
+  #print(head(data[[terms]]))
+  #print(head(lin_model))
+  #print(sqrt(diag(vcov(lm(data[[response]] ~ data[[terms]])))))
 
   ## Standardize column names
   colnames(lin_model)[1] <- "response"
@@ -203,6 +250,7 @@ save_correlation_results <- function(data, response, terms, title) {
   if (!dir.exists(output_dir))
     dir.create(output_dir)
 
-  save_correlation_plots(lin_model, response, terms, output_dir)
+  save_correlation_plots(lin_model, dependent_name, independent_name,
+                         output_dir)
   save_correlation_stats(lin_model, output_dir)
 }
