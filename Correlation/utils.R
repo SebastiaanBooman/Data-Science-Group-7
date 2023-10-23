@@ -98,7 +98,7 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
 
   ## Linearity plots
   regres_p <- plot_cor_test(
-    dataframe = data.frame(lin_model$response, lin_model$terms), # TODO: Subset?
+    dataframe = subset(lin_model, select = c(response, terms)),
     title = "Regression Plot",
     subtitle = paste(
       # FIXME: ew, inefficient, but who cares
@@ -113,12 +113,12 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
     abline     = TRUE
   )
   resid_fitted_p <- plot_cor_test(
-    dataframe = data.frame(lin_model$.fitted, lin_model$.resid), # TODO: Subset?
+    dataframe = subset(lin_model, select = c(.fitted, .resid)),
     title = "Residuals vs. Fits",
     xlab = "Fitted Values",
     ylab = "Residuals",
     geom_point = TRUE,
-    zero_line  = TRUE
+    zero_line = TRUE
     #smooth = TRUE
   )
 
@@ -218,8 +218,8 @@ save_correlation_stats <- function(lin_model, output_dir) {
 
 ## Convenience function to set up a basic linear model and write the results
 ## and plots to disk
-save_correlation <- function(data, response, terms,
-                             dependent_name, independent_name, subdir = "") {
+correlate <- function(data, response, terms, dependent_name, independent_name,
+                      subdir = "", save_results = TRUE) {
   pacman::p_load(ggfortify)
 
   print(paste("Correlating", subdir, independent_name))
@@ -249,13 +249,15 @@ save_correlation <- function(data, response, terms,
   colnames(lin_model)[1] <- "response"
   colnames(lin_model)[2] <- "terms"
 
-  ## Create output directories if they did not exist yet
-  if (!dir.exists(output_dir))
-    dir.create(output_dir, recursive = TRUE)
+  if (save_results) {
+    ## Create output directories if they did not exist yet
+    if (!dir.exists(output_dir))
+      dir.create(output_dir, recursive = TRUE)
 
-  save_correlation_plots(lin_model, dependent_name, independent_name,
-                         output_dir)
-  save_correlation_stats(lin_model, output_dir)
+    save_correlation_plots(lin_model, dependent_name, independent_name,
+                           output_dir)
+    save_correlation_stats(lin_model, output_dir)
+  }
 
   # FIXME: ugh
   return(round(cor(lin_model$response, lin_model$terms) ^ 2, 2))
