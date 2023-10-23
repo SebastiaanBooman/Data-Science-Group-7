@@ -1,8 +1,8 @@
-source("../common.R", chdir = TRUE)
+source("common.R")
 
 ## Save multiple plots
 # TODO: perhaps move to common.R
-save_plots <- function(filename, title = "", ...) {
+save_plots <- function(path, title = "", ...) {
   pacman::p_load(patchwork)
 
   plots <- list(...)
@@ -13,7 +13,8 @@ save_plots <- function(filename, title = "", ...) {
   }
 
   plot_theme <- theme(
-    plot.background = element_blank(),
+    plot.background = element_rect(fill = "black"),
+    #plot.background = element_blank(),
     plot.title = element_text(color = "white", face = "bold")
   )
 
@@ -24,21 +25,19 @@ save_plots <- function(filename, title = "", ...) {
         #tag_levels = "A",
         theme = plot_theme
       )
-    ggsave(filename, result, width = 12, height = 6)
+    # TODO: calculate fitting width and height values automatically
+    ggsave(path, result, width = 12, height = 6)
   } else {
     result <- plots[[1]] + plot_theme #+ ggtitle(title)
-    ggsave(filename, result, width = 8, height = 6)
+    ggsave(path, result, width = 8, height = 6)
   }
-
-  # TODO: calculate fitting width and height values automatically
 }
 
 ## Plot the desired correlation test
-plot_cor_test <- function(dataframe,
-                          title = "", subtitle = "",
+plot_cor_test <- function(dataframe, title = "", subtitle = "",
                           xlab = "x", ylab = "y",
-                          geom_point = FALSE, zero_line = FALSE,
-                          abline = FALSE, smooth = FALSE, stat_smooth = FALSE) {
+                          geom_point = FALSE, zero_line = FALSE, abline = FALSE,
+                          smooth = FALSE, stat_smooth = FALSE) {
   pacman::p_load(ggplot2)
 
   plot <- ggplot(dataframe, aes(dataframe[, 1], dataframe[, 2])) +
@@ -68,7 +67,7 @@ plot_cor_test <- function(dataframe,
       panel.border     = element_blank(),
       panel.grid       = element_blank(),
 
-      plot.background   = element_blank()
+      plot.background = element_rect(fill = "black")
     )
 
   if (geom_point)
@@ -99,23 +98,22 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
 
   ## Linearity plots
   regres_p <- plot_cor_test(
-    # TODO: Subset?
-    dataframe = data.frame(lin_model$response, lin_model$terms),
+    dataframe = data.frame(lin_model$response, lin_model$terms), # TODO: Subset?
     title = "Regression Plot",
-    xlab = independent_name,
-    ylab = dependent_name,
     subtitle = paste(
+      # FIXME: ew, inefficient, but who cares
       "S = ", round(sqrt(diag(vcov(lm(lin_model$response ~ lin_model$terms)))),
                     2), "  ",
       "R-Sq = ", round(cor(lin_model$response, lin_model$terms) ^ 2, 2), "  ",
       sep = ""
     ),
+    xlab = independent_name,
+    ylab = dependent_name,
     geom_point = TRUE,
-    abline =  TRUE
+    abline     = TRUE
   )
   resid_fitted_p <- plot_cor_test(
-    # TODO: Subset?
-    dataframe = data.frame(lin_model$.fitted, lin_model$.resid),
+    dataframe = data.frame(lin_model$.fitted, lin_model$.resid), # TODO: Subset?
     title = "Residuals vs. Fits",
     xlab = "Fitted Values",
     ylab = "Residuals",
@@ -127,7 +125,7 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
   ## Homoscedasticity plot (+ resid_fitted_p)
   scale_loc_p <- plot_cor_test(
     dataframe = data.frame(lin_model$.fitted, sqrt(abs(lin_model$.stdresid))),
-    title = "Scale Location",
+    title = "Scale-Location",
     xlab = "Fitted Values",
     ylab = "sqrt standardized residuals",
     geom_point = TRUE,
@@ -147,20 +145,18 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
 
   ## Save all plots to disk
   save_plots(
-    paste(output_dir, "linearity.png", sep = "/", collapse = "/"),
-    paste("Linearity:", title),
-    regres_p,
-    resid_fitted_p
+    path = paste(output_dir, "linearity.png", sep = "/", collapse = "/"),
+    title = paste("Linearity:", title),
+    regres_p, resid_fitted_p
   )
   save_plots(
-    paste(output_dir, "homoscedasticity.png", sep = "/", collapse = "/"),
-    paste("Homoscedasticity:", title),
-    resid_fitted_p,
-    scale_loc_p
+    path = paste(output_dir, "homoscedasticity.png", sep = "/", collapse = "/"),
+    title = paste("Homoscedasticity:", title),
+    resid_fitted_p, scale_loc_p
   )
   save_plots(
-    paste(output_dir, "normality.png", sep = "/", collapse = "/"),
-    paste("Quantile-Quantile plot:", title),
+    path = paste(output_dir, "normality.png", sep = "/", collapse = "/"),
+    title = paste("Quantile-Quantile plot:", title),
     qq_p
   )
 }
@@ -222,35 +218,45 @@ save_correlation_stats <- function(lin_model, output_dir) {
 
 ## Convenience function to set up a basic linear model and write the results
 ## and plots to disk
-save_correlation_results <- function(data, response, terms,
-                                     dependent_name, independent_name) {
+save_correlation <- function(data, response, terms,
+                             dependent_name, independent_name, subdir = "") {
   pacman::p_load(ggfortify)
 
-  output_root <- "./Correlation/Output"
-  output_dir <- paste(output_root, independent_name, sep = "/", collapse = "/")
+  print(paste("Correlating", subdir, independent_name))
 
-  normalized_data <- data %>% select(c(response, terms)) %>% scale
-  normalized_data <- data.frame(normalized_data)
+  output_dir <- paste("./Correlation/Output", subdir, independent_name,
+                      sep = "/", collapse = "/")
+
+  ## Normalize relevant data using scale() so that mean = 0 and stddev = 1
+  normalized_data <- data %>%
+    select(c(response, terms)) %>%
+    drop_na %>%
+    filter(.[[terms]] != 1) %>%
+    scale %>%
+    data.frame
+
+  if (nrow(normalized_data) == 0) {
+    warning(paste(subdir, independent_name, "contains only NA values"),
+            call. = FALSE)
+    return(NA)
+  }
 
   ## Prepare the linear model and convert it to a ggplot2 compatible format
-  lin_model <- fortify(lm(normalized_data[[response]] ~ normalized_data[[terms]]))
-
-  #print(head(data[[response]]))
-  #print(head(data[[terms]]))
-  #print(head(lin_model))
-  #print(sqrt(diag(vcov(lm(data[[response]] ~ data[[terms]])))))
+  lin_model <- fortify(lm(normalized_data[[response]]
+                          ~ normalized_data[[terms]], na.action = na.omit))
 
   ## Standardize column names
   colnames(lin_model)[1] <- "response"
   colnames(lin_model)[2] <- "terms"
 
   ## Create output directories if they did not exist yet
-  if (!dir.exists(output_root))
-    dir.create(output_root)
   if (!dir.exists(output_dir))
-    dir.create(output_dir)
+    dir.create(output_dir, recursive = TRUE)
 
   save_correlation_plots(lin_model, dependent_name, independent_name,
                          output_dir)
   save_correlation_stats(lin_model, output_dir)
+
+  # FIXME: ugh
+  return(round(cor(lin_model$response, lin_model$terms) ^ 2, 2))
 }
