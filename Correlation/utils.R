@@ -57,8 +57,23 @@ save_plots <- function(path, title = "", ...) {
 ## Plot the desired correlation test
 plot_cor_test <- function(dataframe, title = "", subtitle = "",
                           xlab = "x", ylab = "y",
+                          geom_hist = FALSE,
                           geom_point = FALSE, zero_line = FALSE, abline = FALSE,
                           smooth = FALSE, stat_smooth = FALSE) {
+  if (geom_hist) {
+    plot <- ggplot(dataframe, aes(dataframe[, 1])) +
+      geom_histogram(color = "black", fill = "white") +
+      labs(
+        title = title,
+        subtitle = subtitle,
+        x = xlab,
+        y = ylab
+      ) +
+      presentation_theme
+
+    return(plot)
+  }
+
   plot <- ggplot(dataframe, aes(dataframe[, 1], dataframe[, 2])) +
     labs(
       title = title,
@@ -130,6 +145,15 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
     smooth = TRUE
   )
 
+  ## Histogram
+  hist_p <- plot_cor_test(
+    dataframe = data.frame(lin_model$.stdresid, lin_model$.stdresid),
+    title = paste("Histogram"),
+    xlab = independent_name,
+    ylab = "Density",
+    geom_hist = TRUE
+  )
+
   ## Normality plots
   # FIXME: ew, inefficient, but who cares
   sw_test <- shapiro.test(lin_model$.resid) #TODO: MOVE THIS TO PARAMETER!
@@ -154,6 +178,11 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
     path = paste(output_dir, "uberplot.png", sep = "/", collapse = "/"),
     title = paste("Linearity:", title),
     regres_p, resid_fitted_p, qq_p, scale_loc_p
+  )
+  save_plots(
+    path = paste(output_dir, "histogram.png", sep = "/", collapse = "/"),
+    title = paste("Histogram:", title),
+    hist_p
   )
   #save_plots(
   #  path = paste(output_dir, "linearity.png", sep = "/", collapse = "/"),
