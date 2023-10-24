@@ -217,12 +217,16 @@ hypothesis_test <- function(responses, terms, method = "pearson",
   ))
 }
 
+shapiro_wilk_test <- 
+
 ## Aggregate correlation test results and save to a csv file
 save_correlation_stats <- function(lin_model, output_dir) {
   mean_residual_thresh <- 0.005 #TODO: Why this threshold?
   
   mean_of_resid_test <- mean_of_residuals_test(lin_model$.resid, mean_residual_thresh)
   hypo_test <- hypothesis_test(lin_model$response, lin_model$terms)
+  shapiro_test <- 
+  
   
   results <- bind_rows(mean_of_resid_test, hypo_test)
   
