@@ -1,4 +1,28 @@
 source("common.R")
+pacman::p_load(ggplot2)
+
+presentation_theme <- theme(
+  line = element_line(color = "white", linewidth = .5, linetype = 1,
+                      lineend = "butt"),
+  rect = element_rect(fill = NA, color = NA, linewidth = .5, linetype = 1),
+  text = element_text(color = "lightgray"),
+
+  axis.text.x = element_text(color = "white"),
+  axis.text.y = element_text(color = "white"),
+
+  axis.ticks = element_line(color = "white", linewidth = .5),
+
+  axis.line   = element_line(color = "white", linewidth = .5,
+                             lineend = "square"),
+  axis.line.x = NULL,
+  axis.line.y = NULL,
+
+  panel.background = element_blank(),
+  panel.border     = element_blank(),
+  panel.grid       = element_blank(),
+
+  plot.background = element_blank()
+)
 
 ## Save multiple plots
 # TODO: perhaps move to common.R
@@ -12,23 +36,18 @@ save_plots <- function(path, title = "", ...) {
     return()
   }
 
-  plot_theme <- theme(
-    plot.background = element_rect(fill = "black"),
-    #plot.background = element_blank(),
-    plot.title = element_text(color = "white", face = "bold")
-  )
-
   if (length(plots) > 1) {
     result <- patchwork::wrap_plots(plots) +
       patchwork::plot_annotation(
         #title = title,
         #tag_levels = "A",
-        theme = plot_theme
+        #theme = plot_theme
+        theme = presentation_theme
       )
     # TODO: calculate fitting width and height values automatically
     ggsave(path, result, width = 12, height = 6)
   } else {
-    result <- plots[[1]] + plot_theme #+ ggtitle(title)
+    result <- plots[[1]] + presentation_theme #+ ggtitle(title)
     ggsave(path, result, width = 8, height = 6)
   }
 }
@@ -38,8 +57,6 @@ plot_cor_test <- function(dataframe, title = "", subtitle = "",
                           xlab = "x", ylab = "y",
                           geom_point = FALSE, zero_line = FALSE, abline = FALSE,
                           smooth = FALSE, stat_smooth = FALSE) {
-  pacman::p_load(ggplot2)
-
   plot <- ggplot(dataframe, aes(dataframe[, 1], dataframe[, 2])) +
     labs(
       title = title,
@@ -47,28 +64,7 @@ plot_cor_test <- function(dataframe, title = "", subtitle = "",
       x = xlab,
       y = ylab
     ) +
-    theme(
-      line = element_line(color = "white", linewidth = .5, linetype = 1,
-                          lineend = "butt"),
-      rect = element_rect(fill = NA, color = NA, linewidth = .5, linetype = 1),
-      text = element_text(color = "lightgray"),
-
-      axis.text.x = element_text(color = "white"),
-      axis.text.y = element_text(color = "white"),
-
-      axis.ticks = element_line(color = "white", size = .5),
-
-      axis.line   = element_line(color = "white", size = .5,
-                                 lineend = "square"),
-      axis.line.x = NULL,
-      axis.line.y = NULL,
-
-      panel.background = element_blank(),
-      panel.border     = element_blank(),
-      panel.grid       = element_blank(),
-
-      plot.background = element_rect(fill = "black")
-    )
+    presentation_theme
 
   if (geom_point)
     plot <- plot + geom_point(color = "white")
@@ -127,7 +123,7 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
     dataframe = data.frame(lin_model$.fitted, sqrt(abs(lin_model$.stdresid))),
     title = "Scale-Location",
     xlab = "Fitted Values",
-    ylab = "sqrt standardized residuals",
+    ylab = "sqrt Standardized Residuals",
     geom_point = TRUE,
     smooth = TRUE
   )
@@ -238,6 +234,7 @@ correlate <- function(data, response, terms, dependent_name, independent_name,
   if (nrow(normalized_data) == 0) {
     warning(paste(subdir, independent_name, "contains only NA values"),
             call. = FALSE)
+    print(data %>% select(c(response, terms)))
     return(NA)
   }
 
