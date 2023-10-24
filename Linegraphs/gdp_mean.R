@@ -16,6 +16,6 @@ mean_rgdp_data <- data %>%
   group_by(year) %>%
   summarize(mean_rgdpe = mean(rgdpe))
 
-ggplot(data=mean_rgdp_data, aes(x=year, y=mean_rgdpe)) +
-  geom_line(linetype = "solid")+
+ggplot(data = mean_rgdp_data, aes(x = year, y = mean_rgdpe)) +
+  geom_line(linetype = "solid") +
   geom_point()
