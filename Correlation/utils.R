@@ -6,21 +6,21 @@ presentation_theme <- theme(
                       lineend = "butt"),
   rect = element_rect(fill = NA, color = NA, linewidth = .5, linetype = 1),
   text = element_text(color = "lightgray"),
-
+  
   axis.text.x = element_text(color = "white"),
   axis.text.y = element_text(color = "white"),
-
+  
   axis.ticks = element_line(color = "white", linewidth = .5),
-
+  
   axis.line   = element_line(color = "white", linewidth = .5,
                              lineend = "square"),
   axis.line.x = NULL,
   axis.line.y = NULL,
-
+  
   panel.background = element_blank(),
   panel.border     = element_blank(),
   panel.grid       = element_blank(),
-
+  
   plot.background = element_blank()
 )
 
@@ -28,14 +28,14 @@ presentation_theme <- theme(
 # TODO: perhaps move to common.R
 save_plots <- function(path, title = "", ...) {
   pacman::p_load(patchwork)
-
+  
   plots <- list(...)
-
+  
   if (length(plots) < 1) {
     warning("no plots supplied to save_plots()")
     return()
   }
-
+  
   if (length(plots) > 1) {
     result <- patchwork::wrap_plots(plots) +
       patchwork::plot_annotation(
@@ -65,25 +65,25 @@ plot_cor_test <- function(dataframe, title = "", subtitle = "",
       y = ylab
     ) +
     presentation_theme
-
+  
   if (geom_point)
     plot <- plot + geom_point(color = "white")
-
+  
   if (abline)
     plot <- plot + geom_smooth(method = "lm", se = FALSE) #geom_abline()
-
+  
   if (smooth)
     plot <- plot + geom_smooth(se = FALSE)
-
+  
   # TODO: Want to change these through optional func parameters?
   #       -> dict with values, unpacking ideal
   if (stat_smooth)
     plot <- plot +
       stat_smooth(method = "loess", span = 0.1, colour = I("red"), se = FALSE)
-
+  
   if (zero_line)
     plot <- plot + geom_hline(yintercept = 0, color = "white")
-
+  
   return(plot)
 }
 
@@ -91,7 +91,7 @@ plot_cor_test <- function(dataframe, title = "", subtitle = "",
 save_correlation_plots <- function(lin_model, dependent_name, independent_name,
                                    output_dir) {
   title <- paste(dependent_name, "~", independent_name)
-
+  
   ## Linearity plots
   regres_p <- plot_cor_test(
     dataframe = subset(lin_model, select = c(response, terms)),
@@ -117,7 +117,7 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
     zero_line = TRUE
     #smooth = TRUE
   )
-
+  
   ## Homoscedasticity plot (+ resid_fitted_p)
   scale_loc_p <- plot_cor_test(
     dataframe = data.frame(lin_model$.fitted, sqrt(abs(lin_model$.stdresid))),
@@ -127,7 +127,7 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
     geom_point = TRUE,
     smooth = TRUE
   )
-
+  
   ## Normality plots
   qq_p <- plot_cor_test(
     dataframe = data.frame(qqnorm(lin_model$.stdresid, plot.it = FALSE)[[1]],
@@ -138,7 +138,7 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
     geom_point = TRUE,
     abline = TRUE
   )
-
+  
   ## Save all plots to disk
   save_plots(
     path = paste(output_dir, "linearity.png", sep = "/", collapse = "/"),
@@ -160,53 +160,78 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
 
 mean_of_residuals_test <- function(rdl_vector, res_thresh) {
   res_mean <- mean(rdl_vector)
-
-  return(list(
-    c("Mean of residuals close to 0", res_mean, res_mean <= res_thresh)
-  ))
+  
+  return(data.frame(test = c("Mean of residuals close to 0"),
+                    result = c(as.character(res_mean)),
+                    pass = c(as.character(res_mean <= res_thresh))
+                    )
+         )
+    
 }
 
 hypothesis_test <- function(responses, terms, method = "pearson",
                             significance_level = 0.05) {
   confidence_level <- 1 - significance_level
-  strong_threshold <- 0.75
-
+  strong_threshold <- 0.75 #TODO: Figure out threshold
+  
   ## Mean of residuals check
-  test <- cor.test(responses, terms, method = method,
+  c_test <- cor.test(responses, terms, method = method,
                    conf.level = confidence_level)
-
-  return(list(
-    c(paste(confidence_level * 100, "% confidence interval", sep = ""),
-      paste(test$conf.int[1], test$conf.int[2], sep = " - "), "NA"),
-    c("Reject H₀ with p-value", test$p.value,
-      test$p.value <= significance_level),
-    c(paste(method, " correlation coefficient >= (-)", strong_threshold,
-            sep = ""),
-      test$estimate,
-      test$estimate >= strong_threshold || test$estimate <= -strong_threshold)
+  
+  #Output 1
+  conf_interval <- c(paste(confidence_level * 100, "% confidence interval", sep = ""),
+    paste(c_test$conf.int[1], c_test$conf.int[2], sep = " - "), 
+    "NA")
+  
+  #Output 2
+  if (c_test$p.value < 0.001) evidence_against_h0 <- "Strong evidence"
+  else if (c_test$p.value < 0.05) evidence_against_h0 <- "Moderate evidence"
+  else if (c_test$p.value < 0.1) evidence_against_h0 <- "Weak evidence"
+  else if (c_test$p.value >= 0.1) evidence_against_h0 <- "Insufficient evidence"
+  p_value <- c(
+    "Reject H₀ with p-value", 
+    as.character(c_test$p.value),
+    evidence_against_h0)
+  #Output 3
+  test_estimate <- c(paste(method, " correlation coefficient >= (-)", strong_threshold, sep = ""),
+    as.character(c_test$estimate),
+    as.character(c_test$estimate >= strong_threshold || c_test$estimate <= -strong_threshold))
+  
+  return(data.frame(
+    test = c(
+      conf_interval[1],
+      p_value[1],
+      test_estimate[1]
+    ),
+    result = c(
+      conf_interval[2],
+      p_value[2],
+      test_estimate[2]
+    ),
+    
+    pass = c(
+      conf_interval[3],
+      p_value[3],
+      test_estimate[3]
+    )
   ))
 }
 
 ## Aggregate correlation test results and save to a csv file
 save_correlation_stats <- function(lin_model, output_dir) {
-  mean_residual_thresh <- 0.005
-
-  rows <- c(
-    mean_of_residuals_test(lin_model$.resid, mean_residual_thresh),
-    hypothesis_test(lin_model$response, lin_model$terms)
-  )
-
-  results <- data.frame(test = character(0), result = character(0),
-                        pass = character(0))
-  colnames(results) <-  c("test", "result", "pass")
-  results <- bind_rows(lapply(rows, setNames, names(results)))
-
+  mean_residual_thresh <- 0.005 #TODO: Why this threshold?
+  
+  mean_of_resid_test <- mean_of_residuals_test(lin_model$.resid, mean_residual_thresh)
+  hypo_test <- hypothesis_test(lin_model$response, lin_model$terms)
+  
+  results <- bind_rows(mean_of_resid_test, hypo_test)
+  
   # TODO: Independence X var and residuals check
-
+  
   ## Write the results to a CSV file
   filename <- paste(output_dir, "stat_tests.csv", sep = "/", collapse = "/")
   write.csv(results, filename, row.names = FALSE)
-
+  
   # TODO: add summary output to (a) csv file
   #summary <- summary(lin_model)
 }
@@ -217,12 +242,12 @@ save_correlation_stats <- function(lin_model, output_dir) {
 correlate <- function(data, response, terms, dependent_name, independent_name,
                       subdir = "", save_results = TRUE) {
   pacman::p_load(ggfortify)
-
+  
   print(paste("Correlating", subdir, independent_name))
-
+  
   output_dir <- paste("./Correlation/Output", subdir, independent_name,
                       sep = "/", collapse = "/")
-
+  
   ## Normalize relevant data using scale() so that mean = 0 and stddev = 1
   normalized_data <- data %>%
     select(c(response, terms)) %>%
@@ -230,32 +255,32 @@ correlate <- function(data, response, terms, dependent_name, independent_name,
     filter(.[[terms]] != 1) %>%
     scale %>%
     data.frame
-
+  
   if (nrow(normalized_data) == 0) {
     warning(paste(subdir, independent_name, "contains only NA values"),
             call. = FALSE)
     print(data %>% select(c(response, terms)))
     return(NA)
   }
-
+  
   ## Prepare the linear model and convert it to a ggplot2 compatible format
   lin_model <- fortify(lm(normalized_data[[response]]
                           ~ normalized_data[[terms]], na.action = na.omit))
-
+  
   ## Standardize column names
   colnames(lin_model)[1] <- "response"
   colnames(lin_model)[2] <- "terms"
-
+  
   if (save_results) {
     ## Create output directories if they did not exist yet
     if (!dir.exists(output_dir))
       dir.create(output_dir, recursive = TRUE)
-
+    
     save_correlation_plots(lin_model, dependent_name, independent_name,
                            output_dir)
     save_correlation_stats(lin_model, output_dir)
   }
-
+  
   # FIXME: ugh
   return(round(cor(lin_model$response, lin_model$terms) ^ 2, 2))
 }
