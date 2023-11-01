@@ -1,4 +1,4 @@
-source("../common.R", chdir = TRUE)
+source("common.R")
 
 ## Save multiple plots
 # TODO: perhaps move to common.R

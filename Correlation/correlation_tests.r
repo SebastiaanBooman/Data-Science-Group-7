@@ -1,4 +1,4 @@
-source("./Correlation/utils.r", chdir = TRUE)
+source("Correlation/utils.r")
 pacman::p_load(stringr, rnaturalearth, rnaturalearthdata)
 
 START_YEAR <- 1990

@@ -1,4 +1,4 @@
-source("utils.R", chdir = TRUE)
+source("Maps/utils.R")
 
 hcimap <- function(start_year, end_year = start_year) {
   force(end_year)

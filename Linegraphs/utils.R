@@ -1,1 +1,1 @@
-source("common.R", chdir = TRUE)
+source("common.R")
