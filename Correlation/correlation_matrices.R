@@ -181,10 +181,7 @@ gen_matrix_pearson_conf <- function(){
   }
   
   m <- matrix(unlist(hypres), ncol = length(hypres[[1]]) * 2, byrow = TRUE)
-  #colnames(m_p) <- names(hypres_p[[1]])
   colnames(m) <- append_char_even_odd(names(hypres[[1]]), "P-value", "Correlation")
-  
-  #rownames(m_p) <- names(hypres_p)
   rownames(m) <- names(hypres)
   
   ## Transform the matrix into a "long format"
@@ -195,7 +192,6 @@ gen_matrix_pearson_conf <- function(){
     mutate(type = word(x,-1)) %>% 
     mutate(x = word(x,1))
   
-  #test <- distinct(df_p, y)
   unique_combos <- unique(df[c("x","y")])
   
   df_corr <- data.frame("p-value"  = df[df$type == "P-value", "value"],
