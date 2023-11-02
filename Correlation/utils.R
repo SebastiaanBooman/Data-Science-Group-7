@@ -252,7 +252,8 @@ correlate <- function(data, response, terms, dependent_name, independent_name,
   return(round(cor(fmodel$response, fmodel$terms) ^ 2, 2))
 }
 
-hyponose <- function(data, response, terms, dependent_name, independent_name) {
+#TODO: Different name and location, small refactors needed
+hyponose <- function(data, response, terms, dependent_name, independent_name, p_val = FALSE) {
   pacman::p_load(ggfortify)
 
   print(paste("Hyponosing", independent_name))
@@ -286,6 +287,5 @@ hyponose <- function(data, response, terms, dependent_name, independent_name) {
 
   test <- cor.test(fmodel$response, fmodel$terms, method = "pearson",
                    conf.level = 0.95)
-
-  return(test$p.value)
+  return(c(test$p.value, test$estimate))
 }
