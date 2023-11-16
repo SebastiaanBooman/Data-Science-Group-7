@@ -1,4 +1,4 @@
-source("../common.R", chdir = TRUE)
+source("common.R")
 
 plot_map <- function(data, value) {
   pacman::p_load(dplyr)

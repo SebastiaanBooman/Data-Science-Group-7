@@ -1,4 +1,4 @@
-source("FDI/utils.R", chdir = TRUE)
+source("FDI/utils.R")
 
 ##FDI-INFLOWS
 ds <- FDI(3)
@@ -39,8 +39,4 @@ select_numbers <- ds %>%
 
 FDI_OUTFLOW <- bind_cols(select_countries, select_numbers)
 FDI_OUTFLOW <- rename(FDI_OUTFLOW, c_code = ...1, c_name = ...2)
-
-
-val1 <- get_fdi_numbers(FDI_OUTFLOW, "Belgium")
-val2 <- get_fdi_numbers(FDI_INFLOW,"Austria")
 

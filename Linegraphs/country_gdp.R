@@ -1,17 +1,12 @@
-source("Linegraphs/utils.R", chdir = TRUE)
+source("Linegraphs/utils.R")
 pacman::p_load(ggplot2)
 
-START_YEAR <- "2005"
-END_YEAR <- "2019"
-COUNTRY <- "Austria"
-
-data <-
-  pwt() %>%
-  filter(year >= START_YEAR & year <= END_YEAR & COUNTRY == country) %>%
-  filter(!is.na(rgdpe)) %>%
-  select(c("year", "countrycode","country", "rgdpe"))
-
-
-ggplot(data=, aes(x=, y=)) +
-  geom_line(linetype = "solid")+
-  geom_point()
+Country_gdp <- function(start_year, end_year, c_name){
+  data <-
+    pwt() %>%
+    filter(year >= start_year & year <= end_year & c_name == country) %>%
+    filter(!is.na(rgdpe)) %>%
+    select(c("year", "countrycode","country", "rgdpe"))
+  
+  return(data)
+}
