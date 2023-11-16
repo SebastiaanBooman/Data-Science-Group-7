@@ -25,33 +25,22 @@ presentation_theme <- theme(
   plot.background = element_blank()
 )
 
-## Save multiple plots
-# TODO: perhaps move to common.R
-save_plots <- function(path, title = "", ...) {
+#Combines multiple plots from plot_list into one and returns as plot
+combine_plots <- function(p_theme, plot_list) {
   pacman::p_load(patchwork)
-
-  plots <- list(...)
-
-  if (length(plots) < 1) {
-    warning("no plots supplied to save_plots()")
+  
+  if (length(plot_list) < 2) {
+    warning(paste("not enough plots supplied to combine_plots() received", length(plot_list), "expected >=2"))
     return()
   }
-
-  if (length(plots) > 1) {
-    result <- patchwork::wrap_plots(plots) +
-      patchwork::plot_annotation(
-        #title = title,
-        #tag_levels = "A",
-        #theme = plot_theme
-        theme = presentation_theme
-      )
-    # TODO: calculate fitting width and height values automatically
-    #ggsave(path, result, width = 12, height = 6)
-    ggsave(path, result, width = 8, height = 6)
-  } else {
-    result <- plots[[1]] + presentation_theme #+ ggtitle(title)
-    ggsave(path, result, width = 8, height = 6)
-  }
+  result <- patchwork::wrap_plots(plot_list) +
+    patchwork::plot_annotation(
+      #title = title,
+      #tag_levels = "A",
+      #theme = plot_theme
+      theme = p_theme
+    )
+  return(result)
 }
 
 ## Plot the desired correlation test
@@ -174,16 +163,16 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
   )
 
   ## Save all plots to disk
-  save_plots(
+  combined_plots <- combine_plots(presentation_theme, list(regres_p, resid_fitted_p, qq_p, scale_loc_p))
+  save_plot(
     path = paste(output_dir, "uberplot.png", sep = "/", collapse = "/"),
-    title = paste("Linearity:", title),
-    regres_p, resid_fitted_p, qq_p, scale_loc_p
+    combined_plots
   )
-  save_plots(
+  save_plot(
     path = paste(output_dir, "histogram.png", sep = "/", collapse = "/"),
-    title = paste("Histogram:", title),
     hist_p
   )
+  #TODO: Fix these commented commands (currently using deprecated `save_plots` function, should use save_plot)
   #save_plots(
   #  path = paste(output_dir, "linearity.png", sep = "/", collapse = "/"),
   #  title = paste("Linearity:", title),
