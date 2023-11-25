@@ -25,21 +25,53 @@ presentation_theme <- theme(
   plot.background = element_blank()
 )
 
+doc_theme <- theme(
+  line = element_line(color = "white", linewidth = .5, linetype = 1,
+                      lineend = "butt"),
+  rect = element_rect(fill = "black", color = NA, linewidth = .5, linetype = 1),
+  text = element_text(color = "lightgray"),
+  
+  axis.text.x = element_text(color = "white"),
+  axis.text.y = element_text(color = "white"),
+  
+  axis.ticks = element_line(color = "white", linewidth = .5),
+  
+  axis.line   = element_line(color = "white", linewidth = .5,
+                             lineend = "square"),
+  axis.line.x = NULL,
+  axis.line.y = NULL,
+  
+  plot.title = element_text(size=22),
+  
+  panel.border     = element_blank(),
+  panel.grid       = element_blank(),
+  
+  #plot.background = element_blank()
+)
+
+
 #Combines multiple plots from plot_list into one and returns as plot
-combine_plots <- function(p_theme, plot_list) {
+combine_plots <- function(theme, plot_list, title, tag_lvl = TRUE) {
   pacman::p_load(patchwork)
   
   if (length(plot_list) < 2) {
     warning(paste("not enough plots supplied to combine_plots() received", length(plot_list), "expected >=2"))
     return()
   }
-  result <- patchwork::wrap_plots(plot_list) +
-    patchwork::plot_annotation(
-      #title = title,
-      #tag_levels = "A",
-      #theme = plot_theme
-      theme = p_theme
-    )
+  title <- paste("\"", title,"\"", sep = "")
+  if(tag_lvl)
+    result <- patchwork::wrap_plots(plot_list) +
+      patchwork::plot_annotation(
+        title = paste("Scope:", title, "(Combination of plots)"),
+        tag_levels = "A",
+        theme = theme
+      )
+  else
+    result <- patchwork::wrap_plots(plot_list) +
+      patchwork::plot_annotation(
+        title = paste(title, ": Combination Plots"),
+        theme = theme
+      )
   return(result)
 }
 
@@ -94,7 +126,7 @@ plot_cor_test <- function(dataframe, title = "", subtitle = "",
 }
 
 ## Generate correlation test plots and save them to a csv file
-save_correlation_plots <- function(lin_model, dependent_name, independent_name,
+save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, independent_name,
                                    output_dir) {
   title <- paste(dependent_name, "~", independent_name)
 
@@ -163,7 +195,7 @@ save_correlation_plots <- function(lin_model, dependent_name, independent_name,
   )
 
   ## Save all plots to disk
-  combined_plots <- combine_plots(presentation_theme, list(regres_p, resid_fitted_p, qq_p, scale_loc_p))
+  combined_plots <- combine_plots(doc_theme, list(regres_p, resid_fitted_p, qq_p, scale_loc_p), data_scope_str)
   save_plot(
     path = paste(output_dir, "uberplot.png", sep = "/", collapse = "/"),
     combined_plots

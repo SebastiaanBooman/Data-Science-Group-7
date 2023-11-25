@@ -1,4 +1,6 @@
-source("Correlation/utils.r")
+#TODO: Change file name, does not just create correlation matrices but also calls for the creation of stat test and plots
+
+source("Correlation/plot_gen.r")
 pacman::p_load(rnaturalearth, stringr, sf, reshape)
 
 #CONSTANTS
@@ -35,7 +37,7 @@ penn <- pwt() %>%
     labshm = rgdpna * labsh,
   )
 
-gen_cor_res <- function(data, out) {
+gen_cor_res <- function(data, data_scope_str) {
   data <- data %>%
     mutate(gdppercap = log(cgdpo / pop)) %>%
     group_by(year) %>%
@@ -65,14 +67,15 @@ gen_cor_res <- function(data, out) {
     colnames(f_model)[1] <- "response"
     colnames(f_model)[2] <- "terms"
     if (SAVE_RESULTS){
-      output_dir <- paste("./Correlation/Output", out, indep_name,
+      output_dir <- paste("./Correlation/Output", data_scope_str, indep_name,
                           sep = "/", collapse = "/")
       ## Create output directories if they did not exist yet
       if (!dir.exists(output_dir))
         dir.create(output_dir, recursive = TRUE)
       
       save_correlation_stats(f_model, output_dir)
-      save_correlation_plots(f_model, "GDP per Capita", indep_name,
+      #TODO: Technically can derive `data_scope_str` from `output_dir`, not important but still
+      save_correlation_plots(data_scope_str, f_model, "GDP per Capita", indep_name,
                              output_dir)
     }
     
