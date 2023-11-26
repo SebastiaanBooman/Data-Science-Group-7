@@ -51,25 +51,27 @@ doc_theme <- theme(
 
 
 #Combines multiple plots from plot_list into one and returns as plot
-combine_plots <- function(theme, plot_list, title, tag_lvl = TRUE) {
+combine_plots <- function(plot_list, title, theme = doc_theme, sub_title = "", tag_lvl = TRUE) {
   pacman::p_load(patchwork)
   
   if (length(plot_list) < 2) {
     warning(paste("not enough plots supplied to combine_plots() received", length(plot_list), "expected >=2"))
     return()
   }
-  title <- paste("\"", title,"\"", sep = "")
+  
   if(tag_lvl)
     result <- patchwork::wrap_plots(plot_list) +
       patchwork::plot_annotation(
-        title = paste("Scope:", title, "(Combination of plots)"),
+        title = title,
+        subtitle = sub_title,
         tag_levels = "A",
         theme = theme
       )
   else
     result <- patchwork::wrap_plots(plot_list) +
       patchwork::plot_annotation(
-        title = paste(title, ": Combination Plots"),
+        title = title,
+        subtitle = sub_title,
         theme = theme
       )
   return(result)
@@ -78,32 +80,37 @@ combine_plots <- function(theme, plot_list, title, tag_lvl = TRUE) {
 ## Plot the desired correlation test
 plot_cor_test <- function(dataframe, title = "", subtitle = "",
                           xlab = "x", ylab = "y",
-                          geom_hist = FALSE,
+                          geom_hist = FALSE, geom_box = FALSE,
                           geom_point = FALSE, zero_line = FALSE, abline = FALSE,
-                          smooth = FALSE, stat_smooth = FALSE) {
+                          smooth = FALSE, stat_smooth = FALSE, theme=doc_theme) {
+  
+  #create base plot based on plot type (geom_hist, geom_box or generic)
   if (geom_hist) {
     plot <- ggplot(dataframe, aes(dataframe[, 1])) +
-      geom_histogram(color = "black", fill = "white") +
-      labs(
-        title = title,
-        subtitle = subtitle,
-        x = xlab,
-        y = ylab
-      ) +
-      presentation_theme
-
-    return(plot)
+      geom_histogram(color = "black", fill = "white")
   }
-
-  plot <- ggplot(dataframe, aes(dataframe[, 1], dataframe[, 2])) +
+  
+  else if (geom_box){
+    plot <- ggplot(dataframe, aes(y = dataframe[,1])) +
+      geom_boxplot() +
+      scale_x_discrete()
+  }
+  
+  else{
+    plot <- ggplot(dataframe, aes(dataframe[, 1], dataframe[, 2])) 
+  }
+  
+  #add peripherals to plot
+  plot <- plot +
     labs(
       title = title,
       subtitle = subtitle,
       x = xlab,
       y = ylab
     ) +
-    presentation_theme
+    theme
 
+  #optional peripherals
   if (geom_point)
     plot <- plot + geom_point(color = "white", size = 1)
 
@@ -144,7 +151,8 @@ save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, in
     xlab = independent_name,
     ylab = dependent_name,
     geom_point = TRUE,
-    abline     = TRUE
+    abline     = TRUE,
+    theme=presentation_theme
   )
   resid_fitted_p <- plot_cor_test(
     dataframe = subset(lin_model, select = c(.fitted, .resid)),
@@ -152,8 +160,9 @@ save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, in
     xlab = "Fitted Values",
     ylab = "Residuals",
     geom_point = TRUE,
-    zero_line = TRUE
-    #smooth = TRUE
+    zero_line = TRUE,
+    smooth = TRUE,
+    theme=presentation_theme
   )
 
   ## Homoscedasticity plot (+ resid_fitted_p)
@@ -163,19 +172,31 @@ save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, in
     xlab = "Fitted Values",
     ylab = expression(sqrt("Standardized Residuals")),
     geom_point = TRUE,
-    smooth = TRUE
+    smooth = TRUE,
+    theme=presentation_theme
   )
-
-  ## Histogram
+  
+  ## Normality plots
+  #TODO: would be nice to add simulation of normal distr and actual (see https://rpubs.com/dvdunne/adding_legend)
   hist_p <- plot_cor_test(
     dataframe = data.frame(lin_model$.stdresid, lin_model$.stdresid),
-    title = paste("Histogram"),
-    xlab = independent_name,
+    title = "std residuals distribution histogram",
+    xlab = "Deviation",
     ylab = "Density",
-    geom_hist = TRUE
+    geom_hist = TRUE,
+    theme=presentation_theme
+  )
+  
+  box_p <- plot_cor_test(
+    dataframe = data.frame(lin_model$.stdresid, lin_model$.stdresid),
+    title = "std residuals distribution boxplot",
+    xlab = "",
+    ylab = expression(sqrt("Standardized residual spread")),
+    geom_box = TRUE,
+    theme=presentation_theme
   )
 
-  ## Normality plots
+  
   # FIXME: ew, inefficient, but who cares
   sw_test <- shapiro.test(lin_model$.resid) #TODO: MOVE THIS TO PARAMETER!
   qq_p <- plot_cor_test(
@@ -191,33 +212,58 @@ save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, in
     xlab = "Theoretical Quantiles",
     ylab = "Standardized Residuals",
     geom_point = TRUE,
-    abline = TRUE
+    abline = TRUE,
+    theme=presentation_theme
   )
 
   ## Save all plots to disk
-  combined_plots <- combine_plots(doc_theme, list(regres_p, resid_fitted_p, qq_p, scale_loc_p), data_scope_str)
+  scope_str_quotes <- paste("\"", data_scope_str, "\"", sep = "")
+  combined_plots <- combine_plots(list(regres_p, resid_fitted_p, qq_p, scale_loc_p),
+                                  title=paste("Scope:", scope_str_quotes, "(Combination of plots)"))
   save_plot(
     path = paste(output_dir, "uberplot.png", sep = "/", collapse = "/"),
     combined_plots
   )
+  
+  normality_plots <- combine_plots(list(qq_p, hist_p, box_p),
+                                  title=paste("Scope:", scope_str_quotes, "(Normality plots)"),
+                                  sub_title = paste("Linear model:", dependent_name, "~", independent_name))
+  
   save_plot(
-    path = paste(output_dir, "histogram.png", sep = "/", collapse = "/"),
-    hist_p
+    path = paste(output_dir, "normality_plots.png", sep = "/", collapse = "/"),
+    normality_plots,
+    w = 13
   )
-  #TODO: Fix these commented commands (currently using deprecated `save_plots` function, should use save_plot)
-  #save_plots(
-  #  path = paste(output_dir, "linearity.png", sep = "/", collapse = "/"),
-  #  title = paste("Linearity:", title),
-  #  regres_p, resid_fitted_p
-  #)
-  #save_plots(
-  #  path = paste(output_dir, "homoscedasticity.png", sep = "/", collapse = "/"),
-  #  title = paste("Homoscedasticity:", title),
-  #  resid_fitted_p, scale_loc_p
-  #)
-  #save_plots(
-  #  path = paste(output_dir, "normality.png", sep = "/", collapse = "/"),
+  
+  linearity_plots <- combine_plots(list(regres_p, resid_fitted_p),
+                                   title=paste("Scope:", scope_str_quotes, "(Linearity plots)"),
+                                   sub_title = paste("Linear model:", dependent_name, "~", independent_name))
+  
+  save_plot(
+    path = paste(output_dir, "linearity_plots.png", sep = "/", collapse = "/"),
+    linearity_plots
+  )
+  
+  homoscedasticity_plots <- combine_plots(list(resid_fitted_p, scale_loc_p),
+                                          title=paste("Scope:", scope_str_quotes, "(Homoscedasticity plots)"),
+                                          sub_title = paste("Linear model:", dependent_name, "~", independent_name))
+  
+  save_plot(
+    path = paste(output_dir, "homoscedasticity_plots.png", sep = "/", collapse = "/"),
+    homoscedasticity_plots
+  )
+  
+  # save_plot(
+  #   path = paste(output_dir, "histogram.png", sep = "/", collapse = "/"),
+  #   hist_p
+  # )
+  # save_plot(
+  #   path = paste(output_dir, "boxplot.png", sep = "/", collapse = "/"),
+  #   box_p
+  # )
+  # save_plot(
+  #  path = paste(output_dir, "qq.png", sep = "/", collapse = "/"),
   #  title = paste("Quantile-Quantile plot:", title),
   #  qq_p
-  #)
+  # )
 }
