@@ -1,12 +1,26 @@
 import pandas as pd
-import numpy as np
 import os
 
 def get_directory() -> str:
+    """return current working directory"""
     return os.getcwd()
 
 
 def load_penn_world_table(path_to_working_directory: str) -> pd.DataFrame:
+    """
+    MAKE SURE YOU HAVE "openpyxl" INSTALLED, took me a solid hour to figure that one out.. smh
+
+    function for loading in the PWT dataset.
+
+    args:
+        path_to_working_directory (string): the string to your directory, this is absolute path because working directory changes based on where you run it, which is very annoying.
+
+    returns:
+        pd.Dataframe: a dataframe containing the entire PWT
+    """
+
+
+
     file_location = "Data/pwt1001.xlsx"
     print(f"searching for file at location: {path_to_working_directory}/{file_location}")
     try:
@@ -20,6 +34,20 @@ def load_penn_world_table(path_to_working_directory: str) -> pd.DataFrame:
 
 
 def get_data_on_country(data: pd.DataFrame, country_name: [str] = [""], start_year: int = 1950, end_year: int = 2019) -> pd.DataFrame:
+    """
+    returns all data (including NaN) given certain parameters
+
+    args:
+        data (pd.Dataframe): the PWT data
+        country_name ( [string] ): the list of countries that are to be returned, list is concatenated into one dataframe.
+        start_year (int): the year from which the data starts (inclusive)
+        end_year (int): the year at which the data ends (inclusive)
+
+    returns:
+        pd.Dataframe: one dataframe containing the data of a list of countries between start_year and end_year
+    """
+    
+    
     df = pd.DataFrame(columns=data.columns)
 
     for c_name in country_name:
@@ -40,10 +68,32 @@ def get_data_on_country(data: pd.DataFrame, country_name: [str] = [""], start_ye
 
 
 def calculate_percentage_difference(old: int, new: int) -> pd.DataFrame:
+    """
+    simple calculation for getting %change from 2 numbers
+
+    args:
+        old (int): the first number to be given
+        new (int): the second number to be given
+
+    returns:
+        ((new-old)/old)*100
+    """
     return ((new-old)/old)*100  
 
 
 def split_on_country(data:pd.DataFrame) -> [pd.DataFrame]:
+    """
+    given the PWT dataframe or subset of, will split the dataframe into multiple dataframe with each country getting its own dataframe.\n
+    the column "country" must be present for this method to work.
+
+    args:
+        data (pd.Dataframe): the PWT dataframe or subset of, provided the column "country" is present
+
+    returns:
+        [pd.Dataframe]: an array of dataframes with each dataframe containing all data related to one country.
+    """
+
+
     country_selection = data.country.unique()
     df = []
 
@@ -53,25 +103,43 @@ def split_on_country(data:pd.DataFrame) -> [pd.DataFrame]:
 
 
 def get_rates(data:pd.DataFrame, columns: [str] = [""]) -> [pd.DataFrame]:
+    """
+    splits the dataframe, creating a dataframe for each country with extra column(s) for the rates to be stored in.\n
+    the column with "country" needs to be present within the data
+
+    args:
+        data (pd.Dataframe): the PWT data or a subset of the PWT data\n
+        columns ( [string] ): the columns for which the rates must be calculated, columns must contain numerical values
+
+    returns:
+        [pd.Dataframe]: an array containing a dataframe for each country with the added columns
+    """
+
+
+    #length must be at least 2 or a %change cannot be calculated
     if(len(data) < 2):
         print(f"data of insufficient length, must at least be of length 2. current length {len(data)}")
         return 
     
-    
+    #split the dataframe into multiple with each country a seperate dataframe
     df_country_split = split_on_country(data=data)
-    dfs = []
+    dfs = [] #dataframe storage
 
     for df_country in df_country_split:
-        for column in columns:
-            col_i = df_country.columns.get_loc(column)
+        for column in columns: #foreach column provided
+            col_i = df_country.columns.get_loc(column) #get column index
             values = []
+
+            #find old and new values and calculate the %change and add to value storage
             for index_i in range(1, len(df_country)):
                 index_old = index_i-1
                 values.append(calculate_percentage_difference(df_country.iloc[index_old, col_i], df_country.iloc[index_i, col_i]))
             
-            
+            #cannot get last value as there is no "new" new value so last value is set to none, otherwise pandas will complain about length
             values.append(None)
+            #add column with the values
             df_country[f"{column}_rate"] = values
+        #append new dataframe to the array of country-dataframes
         dfs.append(df_country)
 
     return dfs
