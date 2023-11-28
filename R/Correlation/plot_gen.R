@@ -195,7 +195,26 @@ save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, in
     geom_box = TRUE,
     theme=presentation_theme
   )
-
+  
+  box_p_X <- plot_cor_test(
+    dataframe = data.frame(lin_model$terms, lin_model$terms),
+    title = paste(independent_name, "boxplot"),
+    xlab = "",
+    ylab = independent_name,
+    geom_box = TRUE,
+    theme=presentation_theme
+    
+  )
+  
+  box_p_y <- plot_cor_test(
+    dataframe = data.frame(lin_model$response, lin_model$response),
+    title = paste(dependent_name, "boxplot"),
+    xlab = "",
+    ylab = dependent_name,
+    geom_box = TRUE,
+    theme=presentation_theme
+    
+  )
   
   # FIXME: ew, inefficient, but who cares
   sw_test <- shapiro.test(lin_model$.resid) #TODO: MOVE THIS TO PARAMETER!
@@ -215,19 +234,32 @@ save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, in
     abline = TRUE,
     theme=presentation_theme
   )
-
-  ## Save all plots to disk
+  
+  #Merge plots together
   scope_str_quotes <- paste("\"", data_scope_str, "\"", sep = "")
   combined_plots <- combine_plots(list(regres_p, resid_fitted_p, qq_p, scale_loc_p),
                                   title=paste("Scope:", scope_str_quotes, "(Combination of plots)"))
+  
+  normality_plots <- combine_plots(list(qq_p, hist_p, box_p),
+                                   title=paste("Scope:", scope_str_quotes, "(Normality plots)"),
+                                   sub_title = paste("Linear model:", dependent_name, "~", independent_name))
+  
+  linearity_plots <- combine_plots(list(regres_p, resid_fitted_p),
+                                   title=paste("Scope:", scope_str_quotes, "(Linearity plots)"),
+                                   sub_title = paste("Linear model:", dependent_name, "~", independent_name))
+  
+  homoscedasticity_plots <- combine_plots(list(resid_fitted_p, scale_loc_p),
+                                          title=paste("Scope:", scope_str_quotes, "(Homoscedasticity plots)"),
+                                          sub_title = paste("Linear model:", dependent_name, "~", independent_name))
+  
+  X_y_box_plots <- combine_plots(list(box_p_X, box_p_y),
+                                          title=paste("Scope:", scope_str_quotes, "(Box plots)"))
+  
+  ## Save all plots to disk
   save_plot(
     path = paste(output_dir, "uberplot.png", sep = "/", collapse = "/"),
     combined_plots
   )
-  
-  normality_plots <- combine_plots(list(qq_p, hist_p, box_p),
-                                  title=paste("Scope:", scope_str_quotes, "(Normality plots)"),
-                                  sub_title = paste("Linear model:", dependent_name, "~", independent_name))
   
   save_plot(
     path = paste(output_dir, "normality_plots.png", sep = "/", collapse = "/"),
@@ -235,22 +267,19 @@ save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, in
     w = 13
   )
   
-  linearity_plots <- combine_plots(list(regres_p, resid_fitted_p),
-                                   title=paste("Scope:", scope_str_quotes, "(Linearity plots)"),
-                                   sub_title = paste("Linear model:", dependent_name, "~", independent_name))
-  
   save_plot(
     path = paste(output_dir, "linearity_plots.png", sep = "/", collapse = "/"),
     linearity_plots
   )
   
-  homoscedasticity_plots <- combine_plots(list(resid_fitted_p, scale_loc_p),
-                                          title=paste("Scope:", scope_str_quotes, "(Homoscedasticity plots)"),
-                                          sub_title = paste("Linear model:", dependent_name, "~", independent_name))
-  
   save_plot(
     path = paste(output_dir, "homoscedasticity_plots.png", sep = "/", collapse = "/"),
     homoscedasticity_plots
+  )
+  
+  save_plot(
+    path = paste(output_dir, "data_box_plots.png", sep = "/", collapse = "/"),
+    X_y_box_plots
   )
   
   # save_plot(
