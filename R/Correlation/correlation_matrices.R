@@ -17,6 +17,11 @@ INDEP_VARS_LIST <- list(
 
 NORMALIZE_DATA = TRUE
 SAVE_RESULTS = TRUE
+#UNCOMMENT TO TEST CORRELATION WITH "gdppercap"
+RESPONSE_VAR_NAME = "gdppercap"
+#UNCOMMENT THIS TO TEST COLLINEARITY
+#RESPONSE_VAR_NAME = "pop"
+
 
 ## Gather country economy status data, geometry data is dropped
 ne <- ne_countries(returnclass = "sf") %>%
@@ -49,9 +54,9 @@ gen_cor_res <- function(data, data_scope_str) {
   #-> create fortified linear model
   #-> (if) save results
   #-> return Pearson R2 value
-  lm_pipeline <- function(term_var_name, indep_namee){
+  lm_pipeline <- function(term_var_name, resp_var_name, indep_name){ 
     data <- data %>%
-      select(c("gdppercap", term_var_name)) %>%
+      select(c(resp_var_name, term_var_name)) %>%
       filter(.[[term_var_name]] != 1)
     if (NORMALIZE_DATA) data <- data %>% scale
     data <- data %>% data.frame
@@ -60,14 +65,14 @@ gen_cor_res <- function(data, data_scope_str) {
       return(NA)
     }
     
-    model <- lm(data[["gdppercap"]] ~ data[[term_var_name]], na.action = na.omit)
+    model <- lm(data[[resp_var_name]] ~ data[[term_var_name]], na.action = na.omit)
     f_model <- fortify(model)
     
     #f_model <- create_fortified_lm(data, "gdppercap", term_var_name, "GDP per Capita", indep_name)
     colnames(f_model)[1] <- "response"
     colnames(f_model)[2] <- "terms"
     if (SAVE_RESULTS){
-      output_dir <- paste("./Correlation/Output", data_scope_str, indep_name,
+      output_dir <- paste("./Correlation/Output", resp_var_name, data_scope_str, indep_name,
                           sep = "/", collapse = "/")
       ## Create output directories if they did not exist yet
       if (!dir.exists(output_dir))
@@ -75,7 +80,7 @@ gen_cor_res <- function(data, data_scope_str) {
       
       save_correlation_stats(f_model, output_dir)
       #TODO: Technically can derive `data_scope_str` from `output_dir`, not important but still
-      save_correlation_plots(data_scope_str, f_model, "GDP per Capita", indep_name,
+      save_correlation_plots(data_scope_str, f_model, resp_var_name, indep_name,
                              output_dir)
     }
     
@@ -88,7 +93,7 @@ gen_cor_res <- function(data, data_scope_str) {
   ## Map every variable in vars and correlate against GDP,
   ## the results are stored in a list.
   res_list <- mapply(lm_pipeline, 
-                     names(INDEP_VARS_LIST), INDEP_VARS_LIST, SIMPLIFY = FALSE, USE.NAMES = FALSE)
+                     names(INDEP_VARS_LIST), RESPONSE_VAR_NAME, INDEP_VARS_LIST, SIMPLIFY = FALSE, USE.NAMES = FALSE)
   
   names(res_list) <- unlist(INDEP_VARS_LIST)
   
@@ -164,7 +169,8 @@ cor_matrix <- ggplot(final_df, aes(x = , x, y = y, fill = correlation)) +
   labs(
     #title = "Correlation matrix - GDP vs. Variable",
     x = "Variable",
-    y = "GDP"
+    #TODO: would be cleaner to use the `indep_name`
+    y = RESPONSE_VAR_NAME
   ) +
   geom_tile(show.legend = FALSE) +
   geom_text(aes(x, y, label = correlation),
@@ -183,7 +189,8 @@ cor_matrix_conf  <- ggplot(final_df, aes(x = , x, y = y, fill = p.value)) +
   labs(
     #title = "Correlation matrix - GDP vs. Variable",
     x = "Variable",
-    y = "GDP"
+    #TODO: would be cleaner to use the `indep_name`
+    y = RESPONSE_VAR_NAME
   ) +
   geom_tile(show.legend = TRUE) +
   geom_text(aes(x, y, label = round(correlation, 3)),
