@@ -37,7 +37,8 @@ outlier_test <- function(var_name, data_range){
   
   high_out_amt <- 0
   no_high_out <- "TRUE"
-  if (d > q3 * 1.5) high_out_amt <- high_out_amt+1
+  for(d in sorted_range[after_range])
+    if (d > q3 * 1.5) high_out_amt <- high_out_amt+1
   if (high_out_amt > 0) no_high_out <- "FALSE"
   
   #Output 1
