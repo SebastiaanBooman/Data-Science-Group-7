@@ -49,7 +49,7 @@ gen_cor_res <- function(data, data_scope_str) {
   #-> create fortified linear model
   #-> (if) save results
   #-> return Pearson R2 value
-  lm_pipeline <- function(term_var_name, indep_name){
+  lm_pipeline <- function(term_var_name, indep_namee){
     data <- data %>%
       select(c("gdppercap", term_var_name)) %>%
       filter(.[[term_var_name]] != 1)
