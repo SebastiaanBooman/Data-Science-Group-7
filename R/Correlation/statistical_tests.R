@@ -9,6 +9,55 @@ mean_of_residuals_test <- function(rdl_vector, res_thresh) {
   )
 }
 
+outlier_test <- function(var_name, data_range){
+  #' Checks if there are outliers present in numerical `data_range` using IQR criterion
+  sorted_range <- sort(data_range)
+  range_len <- length(sorted_range)
+  quantiles <- quantile(sorted_range)
+  q1 <- quantiles[2]
+  q3 <- quantiles[4]
+  
+  #Since range is sorted only have to check values before Q1 and after Q3 for potential outliers
+  #Depending if dataset is even or odd, different q1 and q3 values get chosen
+  if (range_len %% 2 == 0){
+    before_range <- 1: ceiling(range_len * 0.25)
+    index_after_q3 <- ceiling(range_len * 0.75)
+    after_range <- index_after_q3: (index_after_q3 + (range_len - index_after_q3) )
+  }
+  else{
+    before_range <- 1: ((range_len * 0.25) %/% 1)
+    index_after_q3 <- ceiling(range_len * 0.75) + 1
+    after_range <- index_after_q3: (index_after_q3 + (range_len - index_after_q3) )
+  }
+  low_out_amt <- 0
+  no_low_out <- "TRUE"
+  for(d in sorted_range[before_range])
+    if (d < q1 * -1.5) low_out_amt <- low_out_amt+1
+  if (low_out_amt > 0) no_low_out <- "FALSE"
+  
+  high_out_amt <- 0
+  no_high_out <- "TRUE"
+  if (d > q3 * 1.5) high_out_amt <- high_out_amt+1
+  if (high_out_amt > 0) no_high_out <- "FALSE"
+  
+  #Output 1
+  low_out <- c(paste("Outliers (-) IQR amt for", var_name),
+               low_out_amt,
+               no_low_out
+  )
+  
+  #Output 2
+  high_out <- c(paste("Outliers (+) IQR amt for", var_name),
+                high_out_amt,
+                no_high_out
+  )
+  return(data.frame(
+    test   = c(low_out[1], high_out[1]),
+    result = c(low_out[2], high_out[2]),
+    pass   = c(low_out[3], high_out[3])
+  ))
+}
+
 hypothesis_test <- function(responses, terms, method = "pearson",
                             significance_level = 0.05) {
   confidence_level <- 1 - significance_level
@@ -75,16 +124,21 @@ shapiro_wilk_test <- function(data_range, label) {
 }
 
 ## Aggregate correlation test results and save to a csv file
-save_correlation_stats <- function(lin_model, output_dir) {
+save_correlation_stats <- function(f_lin_model, output_dir) {
   mean_residual_thresh <- 0.005 # TODO: Why this threshold?
 
-  mean_of_resid_test <- mean_of_residuals_test(lin_model$.resid,
+  mean_of_resid_test <- mean_of_residuals_test(f_lin_model$.resid,
                                                mean_residual_thresh)
-  hypo_test <- hypothesis_test(lin_model$response, lin_model$terms)
-  shapiro_wilk_test <- shapiro_wilk_test(lin_model$.resid, "residuals")
+  hypo_test <- hypothesis_test(f_lin_model$response, f_lin_model$terms)
+  shapiro_wilk_test <- shapiro_wilk_test(f_lin_model$.resid, "residuals")
   # TODO: Should we shapiro test even more?
 
-  results <- bind_rows(mean_of_resid_test, hypo_test, shapiro_wilk_test)
+  #TODO: want to send the response and terms var names through func or is ok?
+  data_out_X_test <- outlier_test("terms", f_lin_model$response)
+  data_out_y_test <- outlier_test("response", f_lin_model$terms)
+  
+  results <- bind_rows(mean_of_resid_test, hypo_test, 
+                       shapiro_wilk_test, data_out_X_test , data_out_y_test)
 
   # TODO: Independence X var and residuals check
 
