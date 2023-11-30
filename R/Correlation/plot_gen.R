@@ -50,8 +50,9 @@ doc_theme <- theme(
 )
 
 
-#Combines multiple plots from plot_list into one and returns as plot
+
 combine_plots <- function(plot_list, title, theme = doc_theme, sub_title = "", tag_lvl = TRUE) {
+  #' Combines multiple plots from plot_list into one and returns as plot
   pacman::p_load(patchwork)
   
   if (length(plot_list) < 2) {
@@ -77,12 +78,13 @@ combine_plots <- function(plot_list, title, theme = doc_theme, sub_title = "", t
   return(result)
 }
 
-## Plot the desired correlation test
+
 plot_cor_test <- function(dataframe, title = "", subtitle = "",
                           xlab = "x", ylab = "y",
                           geom_hist = FALSE, geom_box = FALSE,
                           geom_point = FALSE, zero_line = FALSE, abline = FALSE,
                           smooth = FALSE, stat_smooth = FALSE, theme=doc_theme) {
+  #' Plot the desired correlation test
   
   #create base plot based on plot type (geom_hist, geom_box or generic)
   if (geom_hist) {
@@ -133,29 +135,29 @@ plot_cor_test <- function(dataframe, title = "", subtitle = "",
 }
 
 ## Generate correlation test plots and save them to a csv file
-save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, independent_name,
+save_correlation_plots <- function(data_scope_str, f_lin_model, y_render_name, x_render_name,
                                    output_dir) {
-  title <- paste(dependent_name, "~", independent_name)
+  title <- paste(y_render_name, "~", x_render_name)
 
   ## Linearity plots
   regres_p <- plot_cor_test(
-    dataframe = subset(lin_model, select = c(response, terms)),
+    dataframe = subset(f_lin_model, select = c(y, x)),
     title = "Regression Plot",
     subtitle = paste(
       # FIXME: ew, inefficient, but who cares
-      "S = ", round(sqrt(diag(vcov(lm(lin_model$response ~ lin_model$terms)))),
+      "S = ", round(sqrt(diag(vcov(lm(f_lin_model$y ~ f_lin_model$x)))),
                     2), "  ",
-      "R-Sq = ", round(cor(lin_model$response, lin_model$terms) ^ 2, 2), "  ",
+      "R-Sq = ", round(cor(f_lin_model$y, f_lin_model$x) ^ 2, 2), "  ",
       sep = ""
     ),
-    xlab = independent_name,
-    ylab = dependent_name,
+    xlab = x_render_name,
+    ylab =y_render_name,
     geom_point = TRUE,
     abline     = TRUE,
     theme=presentation_theme
   )
   resid_fitted_p <- plot_cor_test(
-    dataframe = subset(lin_model, select = c(.fitted, .resid)),
+    dataframe = subset(f_lin_model, select = c(.fitted, .resid)),
     title = "Residuals vs. Fits",
     xlab = "Fitted Values",
     ylab = "Residuals",
@@ -167,7 +169,7 @@ save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, in
 
   ## Homoscedasticity plot (+ resid_fitted_p)
   scale_loc_p <- plot_cor_test(
-    dataframe = data.frame(lin_model$.fitted, sqrt(abs(lin_model$.stdresid))),
+    dataframe = data.frame(f_lin_model$.fitted, sqrt(abs(f_lin_model$.stdresid))),
     title = "Scale-Location",
     xlab = "Fitted Values",
     ylab = expression(sqrt("Standardized Residuals")),
@@ -179,7 +181,7 @@ save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, in
   ## Normality plots
   #TODO: would be nice to add simulation of normal distr and actual (see https://rpubs.com/dvdunne/adding_legend)
   hist_p <- plot_cor_test(
-    dataframe = data.frame(lin_model$.stdresid, lin_model$.stdresid),
+    dataframe = data.frame(f_lin_model$.stdresid, f_lin_model$.stdresid),
     title = "std residuals distribution histogram",
     xlab = "Deviation",
     ylab = "Density",
@@ -188,7 +190,7 @@ save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, in
   )
   
   box_p <- plot_cor_test(
-    dataframe = data.frame(lin_model$.stdresid, lin_model$.stdresid),
+    dataframe = data.frame(f_lin_model$.stdresid, f_lin_model$.stdresid),
     title = "std residuals distribution boxplot",
     xlab = "",
     ylab = expression(sqrt("Standardized residual spread")),
@@ -197,30 +199,30 @@ save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, in
   )
   
   box_p_X <- plot_cor_test(
-    dataframe = data.frame(lin_model$terms, lin_model$terms),
-    title = paste(independent_name, "boxplot"),
+    dataframe = data.frame(f_lin_model$x, f_lin_model$x),
+    title = paste(x_render_name, "boxplot"),
     xlab = "",
-    ylab = independent_name,
+    ylab = x_render_name,
     geom_box = TRUE,
     theme=presentation_theme
     
   )
   
   box_p_y <- plot_cor_test(
-    dataframe = data.frame(lin_model$response, lin_model$response),
-    title = paste(dependent_name, "boxplot"),
+    dataframe = data.frame(f_lin_model$y, f_lin_model$y),
+    title = paste(y_render_name, "boxplot"),
     xlab = "",
-    ylab = dependent_name,
+    ylab =y_render_name,
     geom_box = TRUE,
     theme=presentation_theme
     
   )
   
   # FIXME: ew, inefficient, but who cares
-  sw_test <- shapiro.test(lin_model$.resid) #TODO: MOVE THIS TO PARAMETER!
+  sw_test <- shapiro.test(f_lin_model$.resid) #TODO: MOVE THIS TO PARAMETER!
   qq_p <- plot_cor_test(
-    dataframe = data.frame(qqnorm(lin_model$.stdresid, plot.it = FALSE)[[1]],
-                           lin_model$.stdresid),
+    dataframe = data.frame(qqnorm(f_lin_model$.stdresid, plot.it = FALSE)[[1]],
+                           f_lin_model$.stdresid),
     title = paste("Normal Q-Q Plot"),
     subtitle = paste(
       "Shapiro-Wilk: ",
@@ -242,15 +244,15 @@ save_correlation_plots <- function(data_scope_str, lin_model, dependent_name, in
   
   normality_plots <- combine_plots(list(qq_p, hist_p, box_p),
                                    title=paste("Scope:", scope_str_quotes, "(Normality plots)"),
-                                   sub_title = paste("Linear model:", dependent_name, "~", independent_name))
+                                   sub_title = paste("Linear model:",y_render_name, "~", x_render_name))
   
   linearity_plots <- combine_plots(list(regres_p, resid_fitted_p),
                                    title=paste("Scope:", scope_str_quotes, "(Linearity plots)"),
-                                   sub_title = paste("Linear model:", dependent_name, "~", independent_name))
+                                   sub_title = paste("Linear model:",y_render_name, "~", x_render_name))
   
   homoscedasticity_plots <- combine_plots(list(resid_fitted_p, scale_loc_p),
                                           title=paste("Scope:", scope_str_quotes, "(Homoscedasticity plots)"),
-                                          sub_title = paste("Linear model:", dependent_name, "~", independent_name))
+                                          sub_title = paste("Linear model:",y_render_name, "~", x_render_name))
   
   X_y_box_plots <- combine_plots(list(box_p_X, box_p_y),
                                           title=paste("Scope:", scope_str_quotes, "(Box plots)"))

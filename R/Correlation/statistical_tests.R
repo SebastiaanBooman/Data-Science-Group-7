@@ -59,13 +59,13 @@ outlier_test <- function(var_name, data_range){
   ))
 }
 
-hypothesis_test <- function(responses, terms, method = "pearson",
+hypothesis_test <- function(y, x, method = "pearson",
                             significance_level = 0.05) {
   confidence_level <- 1 - significance_level
   strong_threshold <- 0.75 # TODO: Figure out threshold
 
   ## Mean of residuals check
-  c_test <- cor.test(responses, terms, method = method,
+  c_test <- cor.test(y, x, method = method,
                      conf.level = confidence_level)
 
   ## Output 1
@@ -130,13 +130,13 @@ save_correlation_stats <- function(f_lin_model, output_dir) {
 
   mean_of_resid_test <- mean_of_residuals_test(f_lin_model$.resid,
                                                mean_residual_thresh)
-  hypo_test <- hypothesis_test(f_lin_model$response, f_lin_model$terms)
+  hypo_test <- hypothesis_test(f_lin_model$y, f_lin_model$x)
   shapiro_wilk_test <- shapiro_wilk_test(f_lin_model$.resid, "residuals")
   # TODO: Should we shapiro test even more?
 
   #TODO: want to send the response and terms var names through func or is ok?
-  data_out_X_test <- outlier_test("terms", f_lin_model$response)
-  data_out_y_test <- outlier_test("response", f_lin_model$terms)
+  data_out_X_test <- outlier_test("x", f_lin_model$x)
+  data_out_y_test <- outlier_test("y", f_lin_model$y)
   
   results <- bind_rows(mean_of_resid_test, hypo_test, 
                        shapiro_wilk_test, data_out_X_test , data_out_y_test)
