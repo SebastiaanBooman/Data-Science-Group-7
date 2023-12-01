@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
 import pandas as pd
-#import numpy as np
 import matplotlib.pyplot as plt
 from statsmodels.tsa.api import VAR
+import os
 
 COUNTRY = 'USA'
 DEP = 'rgdpna'
 
-df = pd.read_excel('../../Data/pwt1001.xlsx',
+df = pd.read_excel(f'{os.path.dirname(os.path.realpath(__file__))}/../../Data/pwt1001.xlsx',
                    sheet_name = 'Data',
                    parse_dates = ['year'],
                    index_col = 3)
