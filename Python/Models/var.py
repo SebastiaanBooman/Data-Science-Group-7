@@ -8,7 +8,7 @@ from statsmodels.tsa.api import VAR
 COUNTRY = 'USA'
 DEP = 'rgdpna'
 
-df = pd.read_excel('Data/pwt1001.xlsx',
+df = pd.read_excel('../../Data/pwt1001.xlsx',
                    sheet_name = 'Data',
                    parse_dates = ['year'],
                    index_col = 3)
