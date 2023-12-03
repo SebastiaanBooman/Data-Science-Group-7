@@ -1,4 +1,5 @@
-source("Correlation/plot_gen.r")
+source("./Correlation/statistical_tests.R")
+source("./Correlation/visual_tests.r")
 pacman::p_load(rnaturalearth, stringr, sf, reshape)
 
 #' Loads and merges Penn World Table and Natural Earth datasets
@@ -58,13 +59,13 @@ get_y_render_name <- function(y_var_name, named_vec, default="GDP per capita"){
 #' return Pearson R2 value
 #' 
 #' @param data character, word to check in `X_VARS_VEC`
-#' @param x_var_name character, default return value
-#' @param y_var_name character, default return value
-#' @param x_render_name character, default return value
-#' @param y_render_name character, default return value
-#' @param data_scope_str character, default return value
+#' @param x_var_name character, independent variable name used to retrieve data from `data`
+#' @param y_var_name character, dependent variable name used to retrieve data from `data`
+#' @param x_render_name character, name to use when referring to the independent data (e.g: when creating plots or dirs/saving)
+#' @param y_render_name character, name to use when referring to the dependent data (e.g: when creating plots or dirs/saving)
+#' @param data_scope_str character, metadata about scope of `data`
 #' @param save_res logical, default = TRUE, Whether the results of the linear correlation should get saved (plots and stat test)
-#' @returns float vector, the Pearson's P-value and R2 of the linear relationship
+#' @returns float vector, vector w/ length = 2 containing: Pearson's P-value and R2 of the linear relationship
 lm_pipeline <- function(data, x_var_name, y_var_name, x_render_name, y_render_name, data_scope_str, save_res=TRUE){
   ## Select the data for given y ~ x relationship
   data <- data %>%
@@ -77,28 +78,51 @@ lm_pipeline <- function(data, x_var_name, y_var_name, x_render_name, y_render_na
   }
   
   ## Generate fortified linear model
-  model <- lm(data[[y_var_name]] ~ data[[x_var_name]], na.action = na.omit)
-  f_model <- fortify(model)
-  colnames(f_model)[1] <- "y"
-  colnames(f_model)[2] <- "x"
+  lin_model <- lm(data[[y_var_name]] ~ data[[x_var_name]], na.action = na.omit)
   
   ## Save the correlation results
+  output_dir <- ""
   if (save_res){
     output_dir <- paste("./Correlation/Output", y_render_name, data_scope_str, x_render_name,
                         sep = "/", collapse = "/")
-    ## Create output directories if they did not exist yet
+    ## Create output directories if they do not exist yet
     if (!dir.exists(output_dir))
       dir.create(output_dir, recursive = TRUE)
-    
-    save_correlation_stats(f_model, output_dir)
-    save_correlation_plots(data_scope_str, f_model, y_render_name, x_render_name,
-                           output_dir)
   }
-  
-  cor_test <- cor.test(f_model$y, f_model$x, method = "pearson",
-                       conf.level = 0.95)
+  ## Always need these correlation stats for return or save_
+    test_res <- gen_corr_stats(lin_model, output_dir, save_res)
+
+    r_squared <-  test_res %>%
+      filter(test == "R-squared") %>%
+      select(result) %>%
+      as.numeric() %>%
+      round(2)
+    
+    p_val <- test_res %>%
+      filter(test == "Reject H₀ with p-value") %>%
+      select(result) %>%
+      as.numeric()
+    
+  ## Only need plots and some stats if they get saved
+  if (save_res){
+    sw_stat <- test_res %>%
+      filter(test == "Shapiro Wilk: statistic for residuals") %>%
+      select(result) %>%
+      as.numeric()
+    sw_p <- test_res %>%
+      filter(test == "Shapiro Wilk: P-value for residuals indicates linearity") %>%
+      select(result) %>%
+      as.numeric()
+    s <- test_res %>%
+      filter(test == "s") %>%
+      select(result) %>%
+      as.numeric
+    save_correlation_plots(data_scope_str, lin_model, y_render_name, x_render_name,
+                           output_dir, sw_stat, sw_p, s, r_squared)
+  }
+
   #Return p value and rsquared
-  return(c(cor_test$p.value, round(cor_test$estimate ^ 2, 2)))
+  return(c(p_val, r_squared))
 }
 
 #' Wrapper function for generating linear correlation tests
@@ -106,7 +130,7 @@ lm_pipeline <- function(data, x_var_name, y_var_name, x_render_name, y_render_na
 #' @param data dataframe, should contain PWT and NE data 
 #' @param data_scope_str character, metadata about scope of `data`
 #' @param x_vars_vec named character vector, should contain "x var names"
-#' @param y_var_name character, the dependent variable which should correspond to `data`
+#' @param y_var_name character, dependent variable name used to retrieve data from `data`
 #' @param normalize_data logical, default = FALSE, whether the data should get normalized
 #' @param save_res logical, default = TRUE, Whether the results of the linear correlation should get saved (plots and stat test)
 #' @returns list, contains the correlation result for each independent variable
@@ -180,4 +204,5 @@ generate_cor_res <- function(y_var_name="gdppercap", normalize_data=FALSE, save_
   
   return (cor_res)
 }
-#generate_cor_res()
+
+generate_cor_res()
