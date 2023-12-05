@@ -43,3 +43,29 @@ gen_corr_stats <- function(lin_model, output_dir, save_res) {
   
   return (results)
 }
+
+
+get_stat_result_by_testname <- function(stat_result, testname, round=FALSE){
+  extracted_result <- stat_result %>%
+    filter(test == testname) %>%
+    select(result) %>%
+    as.numeric() 
+  if (round)
+    extracted_result <- extracted_result %>%
+      round(2)
+  return(extracted_result)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

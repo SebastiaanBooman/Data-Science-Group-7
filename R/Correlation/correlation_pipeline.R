@@ -85,38 +85,19 @@ lm_pipeline <- function(data, x_var_name, y_var_name, x_render_name, y_render_na
   if (save_res){
     output_dir <- paste("./Correlation/Output", y_render_name, data_scope_str, x_render_name,
                         sep = "/", collapse = "/")
-    ## Create output directories if they do not exist yet
-    if (!dir.exists(output_dir))
-      dir.create(output_dir, recursive = TRUE)
+    create_output_dir(output_dir)
   }
   ## Always need these correlation stats for return or save_
     test_res <- gen_corr_stats(lin_model, output_dir, save_res)
-
-    r_squared <-  test_res %>%
-      filter(test == "R-squared") %>%
-      select(result) %>%
-      as.numeric() %>%
-      round(2)
-    
-    p_val <- test_res %>%
-      filter(test == "Reject H₀ with p-value") %>%
-      select(result) %>%
-      as.numeric()
-    
+    r_squared <- get_stat_result_by_testname(test_res, "R-squared", TRUE)
+    p_val <- get_stat_result_by_testname(test_res, "Reject H₀ with p-value")
+      
   ## Only need plots and some stats if they get saved
   if (save_res){
-    sw_stat <- test_res %>%
-      filter(test == "Shapiro Wilk: statistic for residuals") %>%
-      select(result) %>%
-      as.numeric()
-    sw_p <- test_res %>%
-      filter(test == "Shapiro Wilk: P-value for residuals indicates linearity") %>%
-      select(result) %>%
-      as.numeric()
-    s <- test_res %>%
-      filter(test == "s") %>%
-      select(result) %>%
-      as.numeric
+    sw_stat <- get_stat_result_by_testname(test_res, "Shapiro Wilk: statistic for residuals")
+    sw_p <- get_stat_result_by_testname(test_res, "Shapiro Wilk: P-value for residuals indicates linearity")
+    s <- get_stat_result_by_testname(test_res, "s")
+      
     save_correlation_plots(data_scope_str, lin_model, y_render_name, x_render_name,
                            output_dir, sw_stat, sw_p, s, r_squared)
   }
@@ -125,6 +106,13 @@ lm_pipeline <- function(data, x_var_name, y_var_name, x_render_name, y_render_na
   return(c(p_val, r_squared))
 }
 
+#TODO Docstring
+create_output_dir <- function(output_dir){
+  ## Create output directories if they do not exist yet
+  if (!dir.exists(output_dir))
+    dir.create(output_dir, recursive = TRUE)
+}
+2
 #' Wrapper function for generating linear correlation tests
 #'
 #' @param data dataframe, should contain PWT and NE data 
