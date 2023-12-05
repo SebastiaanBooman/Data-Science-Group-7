@@ -67,17 +67,12 @@ get_y_render_name <- function(y_var_name, named_vec, default="GDP per capita"){
 #' @param save_res logical, default = TRUE, Whether the results of the linear correlation should get saved (plots and stat test)
 #' @returns float vector, vector w/ length = 2 containing: Pearson's P-value and R2 of the linear relationship
 lm_pipeline <- function(data, x_var_name, y_var_name, x_render_name, y_render_name, data_scope_str, save_res=TRUE){
-  ## Select the data for given y ~ x relationship
-  data <- data %>%
-    select(c(y_var_name, x_var_name)) %>%
-    filter(.[[x_var_name]] != 1)
-
+  data <- select_x_y_data(data, y_var_name, x_var_name)
   if (nrow(data) == 0) {
     warning(paste(x_render_name, "contains only NA values"), call. = FALSE)
     return(NA)
   }
   
-  ## Generate fortified linear model
   lin_model <- lm(data[[y_var_name]] ~ data[[x_var_name]], na.action = na.omit)
   
   ## Save the correlation results
@@ -104,6 +99,14 @@ lm_pipeline <- function(data, x_var_name, y_var_name, x_render_name, y_render_na
 
   #Return p value and rsquared
   return(c(p_val, r_squared))
+}
+
+#TODO Docstring
+select_x_y_data <- function(data, y_var_name, x_var_name){
+  data <- data %>%
+    select(c(y_var_name, x_var_name)) %>%
+    filter(.[[x_var_name]] != 1)
+  return(data)
 }
 
 #TODO Docstring
