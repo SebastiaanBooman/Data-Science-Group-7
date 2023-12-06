@@ -35,11 +35,14 @@ auto_correlation_dataframe <- function(column){
 #' @param auto_corr_dataframe the dataframe that gets returned from the 'auto_correlation_dataframe' function
 #'
 #' @returns a ggplot object containing the plot for the correlation test
-auto_correlation_plot <- function(auto_corr_dataframe){
+auto_correlation_plot <- function(auto_corr_dataframe, title){
   corr_plot <- ggplot(data = auto_corr_dataframe, mapping = aes(x = lag, y = acf, )) +
     geom_hline(aes(yintercept = 0)) +
     geom_segment(mapping = aes(xend = lag, yend = 0)) +
     scale_x_continuous(breaks = seq(from = 0, to = 30, by = 5)) +
-    scale_y_continuous(breaks = seq(from = -1, to = 1.0, by = 0.1))
+    scale_y_continuous(breaks = seq(from = -1, to = 1.0, by = 0.1)) +
+    labs(
+      title = title
+    )
   return(corr_plot)
 }

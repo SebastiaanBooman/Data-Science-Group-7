@@ -47,7 +47,8 @@ save_correlation_plots <- function(data_scope_str, lin_model, y_render_name, x_r
   qq_p <- gen_qq_plot(f_lin_model, presentation_theme, sw_stat, sw_p)
   
   ##auto correlation plots
-  ac_plot <- auto_correlation_plot(ac_df)
+  ac_plot <- auto_correlation_plot(ac_df, paste("Auto correlation:", x_render_name))
+  x_y_residual_ac_plot <- auto_correlation_plot(auto_correlation_dataframe(f_lin_model$.resid), paste("Auto correlation:", y_render_name, "~", x_render_name))
   
   ## Merge plots together
   scope_str_quotes <- paste("\"", data_scope_str, "\"", sep = "")
@@ -102,8 +103,13 @@ save_correlation_plots <- function(data_scope_str, lin_model, y_render_name, x_r
   )
   
   save_plot(
-    path = paste(output_dir, "auto_correlation_plots.png", sep = "/", collapse = "/"),
+    path = paste(output_dir, "x_auto_correlation_plots.png", sep = "/", collapse = "/"),
     ac_plot
+  )
+  
+  save_plot(
+    path = paste(output_dir, "x_y_auto_correlation_plots.png", sep = "/", collapse = "/"),
+    x_y_residual_ac_plot
   )
   
   # save_plot(
