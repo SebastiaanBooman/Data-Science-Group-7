@@ -1,6 +1,7 @@
 source("common.R")
 source("./Correlation/plot_generator.R")
 source("./Correlation/plot_themes.R")
+source("./Correlation/auto_correlation_testing.R")
 
 #' Generate linear correlation test (assumptions) plots and save them to a disk
 #' 
@@ -13,9 +14,10 @@ source("./Correlation/plot_themes.R")
 #' @param sw_p TODO
 #' @param s TODO
 #' @param r_squared TODO
+#' @param ac_df the dataframe to be used for performing the auto correlation calculations
 #' @returns ggplot2:ggplot | None, the plot created after merging or none if `plot_list` does not contain enough plots to merge
 save_correlation_plots <- function(data_scope_str, lin_model, y_render_name, x_render_name,
-                                   output_dir, sw_stat, sw_p, s, r_squared) {
+                                   output_dir, sw_stat, sw_p, s, r_squared, ac_df) {
   
   f_lin_model <- fortify(lin_model)
   colnames(f_lin_model)[1] <- "y"
@@ -43,6 +45,9 @@ save_correlation_plots <- function(data_scope_str, lin_model, y_render_name, x_r
   #FIXME: ew, inefficient, but who cares
   sw_test <- shapiro.test(f_lin_model$.resid)
   qq_p <- gen_qq_plot(f_lin_model, presentation_theme, sw_stat, sw_p)
+  
+  ##auto correlation plots
+  ac_plot <- auto_correlation_plot(ac_df)
   
   ## Merge plots together
   scope_str_quotes <- paste("\"", data_scope_str, "\"", sep = "")
@@ -94,6 +99,11 @@ save_correlation_plots <- function(data_scope_str, lin_model, y_render_name, x_r
   save_plot(
     path = paste(output_dir, "data_box_plots.png", sep = "/", collapse = "/"),
     X_y_box_plots
+  )
+  
+  save_plot(
+    path = paste(output_dir, "auto_correlation_plots.png", sep = "/", collapse = "/"),
+    ac_plot
   )
   
   # save_plot(

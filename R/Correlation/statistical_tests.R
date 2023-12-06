@@ -1,4 +1,4 @@
-source("./Correlation/stat_generator.r")
+source("./Correlation/stat_generator.R")
 #' Aggregate correlation test results and if specified save to a CSV
 #' 
 #' @param lin_model TODO

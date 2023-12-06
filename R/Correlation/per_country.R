@@ -1,4 +1,4 @@
-source("Correlation/utils.r")
+source("Correlation/utils.R")
 
 #countryname <- "USA"
 countryname <- "CAN"

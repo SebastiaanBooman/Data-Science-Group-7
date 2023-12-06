@@ -1,5 +1,6 @@
 source("./Correlation/statistical_tests.R")
-source("./Correlation/visual_tests.r")
+source("./Correlation/visual_tests.R")
+source("./Correlation/auto_correlation_testing.R")
 pacman::p_load(rnaturalearth, stringr, sf, reshape)
 
 #' Loads and merges Penn World Table and Natural Earth datasets
@@ -92,9 +93,11 @@ lm_pipeline <- function(data, x_var_name, y_var_name, x_render_name, y_render_na
     sw_stat <- get_stat_result_by_testname(test_res, "Shapiro Wilk: statistic for residuals")
     sw_p <- get_stat_result_by_testname(test_res, "Shapiro Wilk: P-value for residuals indicates linearity")
     s <- get_stat_result_by_testname(test_res, "s")
+    
+    ac_df <- auto_correlation_dataframe(data[[x_var_name]])
       
     save_correlation_plots(data_scope_str, lin_model, y_render_name, x_render_name,
-                           output_dir, sw_stat, sw_p, s, r_squared)
+                           output_dir, sw_stat, sw_p, s, r_squared, ac_df)
   }
 
   #Return p value and rsquared
@@ -115,7 +118,7 @@ create_output_dir <- function(output_dir){
   if (!dir.exists(output_dir))
     dir.create(output_dir, recursive = TRUE)
 }
-2
+
 #' Wrapper function for generating linear correlation tests
 #'
 #' @param data dataframe, should contain PWT and NE data 
