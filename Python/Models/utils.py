@@ -144,3 +144,30 @@ def get_rates(data:pd.DataFrame, columns: [str] = [""]) -> [pd.DataFrame]:
 
     return dfs
 
+
+def get_import_export_numerics(cgdpo_dataframe: pd.DataFrame, import_share_dataframe: pd.DataFrame, export_share_dataframe:pd.DataFrame) -> pd.DataFrame :
+    '''
+    gets the numerical values from the share values that are in the PWT dataset for import and export.
+
+    args:
+        cgdpo_dataframe (pd.Dataframe): a dataframe containing the CGDPo values of a country
+        import_share_dataframe (pd.Dataframe): a dataframe containing the import shares (csh_x) of a country
+        export_share_dataframe (pd.Dataframe): a dataframe containing the export shares (csh_m) of a country
+
+    returns:
+        pd.Dataframe: a dataframe containing two columns ['import-value', 'export-value'] with the numerical values for the import and the export
+    '''
+    
+    import_export_df = pd.DataFrame(columns=["import-value", "export-value"])
+
+    for i in range(len(cgdpo_dataframe)):
+        cgdpo_value = cgdpo_dataframe.iloc[i,0]
+        import_value = abs(import_share_dataframe.iloc[i,0] * cgdpo_value)
+        export_value = abs(export_share_dataframe.iloc[i,0] * cgdpo_value)
+        
+
+        ndf = pd.DataFrame(data={"import-value" : [import_value], "export-value": [export_value]})
+        ndf.index = [f"{i}"]
+        import_export_df = pd.concat([import_export_df, ndf])
+
+    return import_export_df
