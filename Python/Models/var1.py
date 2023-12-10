@@ -109,6 +109,7 @@ def test_country(df, country):
             rmse = np.mean((residuals)**2)**.5
             range = residuals.max() - residuals.min()
             rmse_std = rmse / range
+            #rmse_std = np.sqrt((residuals**2).mean())
 
             ax.plot(df_train[-train_length:][var], color='white', label='Train')
             ax.plot(df_test[:horizon][var], color='tab:blue', label = 'Test')

@@ -2,10 +2,9 @@ source("./Correlation/stat_generator.R")
 #' Aggregate correlation test results and if specified save to a CSV
 #' 
 #' @param lin_model TODO
-#' @param output_dir  TODO
-#' @param save_res TODO
+#' @param output_dir  character, the absolute output path to save CSV file. If CSV should not be saved should be empty character
 #' @returns dataframe, dataframe with 3 character columns: "Test", "Result" and "Pass"
-gen_corr_stats <- function(lin_model, output_dir, save_res) {
+gen_corr_stats <- function(lin_model, output_dir) {
   df_lm_sum <- dataframe_from_lm_sum(summary(lin_model))
   
   f_lin_model <- fortify(lin_model)
@@ -31,16 +30,11 @@ gen_corr_stats <- function(lin_model, output_dir, save_res) {
   # TODO: Independence X var and residuals check
 
   #TODO: maybe want to save some output in different files (e.g: lm info vs assumption checks)
-  if(save_res){
+  if(length(output_dir) > 1){
     ## Write the results to a CSV file
     filename <- paste(output_dir, "stat_tests.csv", sep = "/", collapse = "/")
     write.csv(results, filename, row.names = FALSE)
   }
-
-
-  # TODO: add summary output to (a) csv file
-  #summary <- summary(lin_model)
-  
   return (results)
 }
 
