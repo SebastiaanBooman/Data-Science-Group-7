@@ -161,11 +161,11 @@ dataframe_from_lm_sum <- function(lm_sum){
   ))
 }
 
-#TODO: Figure out what this test entails
-s_test <- function(f_lin_model){
+#TODO: Criteria for standard error test?
+standard_error_test <- function(f_lin_model){
   s <- diag(vcov(lm(f_lin_model$y ~ f_lin_model$x)))
-  ## Output s
-  out_s <- c("s", as.character(s))
+  ## Output se
+  out_s <- c("standard error", as.character(s))
   
   return(data.frame(
     test   = c(out_s[1]),

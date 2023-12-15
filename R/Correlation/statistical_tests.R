@@ -22,10 +22,10 @@ gen_corr_stats <- function(lin_model, output_dir) {
   data_out_X_test <- outlier_test("x", f_lin_model$x)
   data_out_y_test <- outlier_test("y", f_lin_model$y)
   
-  s <- s_test(f_lin_model)
+  standard_error_test <- standard_error_test(f_lin_model)
   
   results <- bind_rows(df_lm_sum, mean_of_resid_test, hypo_test, 
-                       shapiro_wilk_test, data_out_X_test , data_out_y_test, s)
+                       shapiro_wilk_test, data_out_X_test , data_out_y_test, standard_error_test)
 
   
   # TODO: Independence X var and residuals check
