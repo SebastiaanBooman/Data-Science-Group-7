@@ -84,7 +84,7 @@ lm_pipeline <- function(data, x_var_name, y_var_name, x_render_name, y_render_na
     create_output_dir(output_dir)
   }
   ## Always need these correlation stats for return or save_
-    test_res <- gen_corr_stats(lin_model, output_dir, save_res)
+    test_res <- gen_corr_stats(lin_model, output_dir)
     r_squared <- get_stat_result_by_testname(test_res, "R-squared", TRUE)
     p_val <- get_stat_result_by_testname(test_res, "Reject H₀ with p-value")
       
