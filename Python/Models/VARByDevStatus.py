@@ -12,7 +12,7 @@ def stationarity_test(data: pd.DataFrame, verbose = False) -> bool:
     maxlag = round(12 * pow(len(data) / 100, 1/4))
     alpha = 0.05
     results = pd.DataFrame()
-    stationary = True
+    all_cols_are_stationary = True
 
     for name, series in data.items():
         result = adfuller(
@@ -23,19 +23,23 @@ def stationarity_test(data: pd.DataFrame, verbose = False) -> bool:
             store      = False,
             regresults = False
         )
+        col_val_is_stationary = result[1] <= alpha
+
+        if not col_val_is_stationary:
+            all_cols_are_stationary = False
+
         results[name] = {
             'P-Value':     round(result[1], 3),
             'Number lags': result[2],
-            'Stationary':  'Yes' if stationary else 'No'
+            'Stationary':  'Yes' if col_val_is_stationary else 'No'
         }
 
-        if result[1] > alpha:
-            stationary = False
+
         
     if verbose:
         print(results.transpose())
 
-    return stationary
+    return all_cols_are_stationary
 
 def make_dataframe_stationary(df: pd.DataFrame):
     diff_pass = 1
