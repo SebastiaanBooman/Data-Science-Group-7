@@ -1,6 +1,7 @@
 # This makes sure Pandas keeps it mouth shut
 import warnings
 warnings.simplefilter(action = 'ignore', category = FutureWarning)
+
 import pandas as pd
 import numpy as np
 from statsmodels.tsa.api import VAR
@@ -9,6 +10,35 @@ from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt 
 from sklearn.model_selection import KFold
 from dataclasses import dataclass
+
+#TODO: Move parts to different files for clarity/readability
+@dataclass
+class MeanVARResults:
+    mean_rmse: float
+    mean_stationary_itas: float
+    mean_fully_stationary: float
+    mean_train_length: float
+    mean_test_length: float
+
+@dataclass
+class FoldVARResults:
+    rmse: float
+    is_fully_stationary: bool
+    stationary_itas: int
+    train_length: int
+    test_length: int
+
+@dataclass
+class MakeStationaryResult:
+    df: pd.DataFrame
+    is_fully_stationary: bool
+    iterations: int
+
+@dataclass 
+class TrainTestData:
+    train: pd.DataFrame
+    test: pd.DataFrame
+
 
 def stationarity_test(data: pd.DataFrame, verbose = False) -> bool:
     maxlag = round(12 * pow(len(data) / 100, 1/4))
@@ -41,9 +71,9 @@ def stationarity_test(data: pd.DataFrame, verbose = False) -> bool:
 
     return all_cols_are_stationary
 
-def make_dataframe_stationary(df: pd.DataFrame):
+def make_dataframe_stationary(df: pd.DataFrame) -> MakeStationaryResult:
     diff_pass = 1
-
+    data_completely_stationary = False
     while not stationarity_test(df, True):
         print(f'One or more series are non-stationary, differencing... (pass = {diff_pass})')
         df = df.diff().dropna()
@@ -55,9 +85,9 @@ def make_dataframe_stationary(df: pd.DataFrame):
             print('Unable to make all series stationary')
             break
     else:
+        data_completely_stationary = True
         print('All series are stationary')
-    
-    return df
+    return MakeStationaryResult(df, data_completely_stationary, diff_pass) 
 
 def create_VAR_for_model(train_df, maxlag):
     model = VAR(train_df, freq = train_df.index.inferred_freq)
@@ -72,11 +102,6 @@ def create_VAR_for_model(train_df, maxlag):
         trend   = 'c' # Add constant test change to n
     )
 
-@dataclass 
-class TrainTestData:
-    train: pd.DataFrame
-    test: pd.DataFrame
-
 def create_train_test_data(df: pd.DataFrame, folds: int)-> list[TrainTestData]: 
     """Takes data and splits it up in `folds` folds for training and testing sets"""
     kf = KFold(n_splits=folds, random_state=None, shuffle= False)
@@ -87,11 +112,16 @@ def create_train_test_data(df: pd.DataFrame, folds: int)-> list[TrainTestData]:
                     test = df.take(test_index)))
     return train_test_list
 
-def get_mean_var_rmse(data: TrainTestData, maxlag: int, alpha: float) -> float:
+def get_fold_var_res(data: TrainTestData, maxlag: int, alpha: float) -> FoldVARResults:
     """Using a train test split `data` creates a VAR model and calculates rmse"""
     #TODO: What to do with folds which train set contain less than 20 values?
+    df_train_stationary_itas = 0
+    df_train_fully_stationary = False
     if len(data.train) > 19:
-        data.train = make_dataframe_stationary(data.train) 
+        make_df_train_stationary_res = make_dataframe_stationary(data.train)
+        data.train = make_df_train_stationary_res.df
+        df_train_stationary_itas = make_df_train_stationary_res.iterations
+        df_train_fully_stationary = make_df_train_stationary_res.is_fully_stationary
 
     var_model = create_VAR_for_model(data.train, maxlag)
     data_test_len = len(data.test)
@@ -104,65 +134,111 @@ def get_mean_var_rmse(data: TrainTestData, maxlag: int, alpha: float) -> float:
     #TODO: Are we allowed to just take [-1] as value (commented part is original)
     df_forecast = df_forecast_diff.cumsum() + data.train.iloc[-1] # data.train[data.train.index < df_forecast_diff.index[0]].iloc[-1]
     rmse = mean_squared_error(df_forecast['cgdpo'], data.test['cgdpo'].values[:data_test_len], squared = False)
-    return rmse
+    return FoldVARResults(rmse, df_train_fully_stationary, df_train_stationary_itas, len(data.train), data_test_len)
 
-def get_mean_var_rmse_by_country(ctry_df: pd.DataFrame, maxlag: int, alpha, folds: int = 4):
+def get_var_res_by_country(ctry_df: pd.DataFrame, maxlag: int, alpha, folds: int = 4) -> MeanVARResults:
     """TODO: Docstring Using KFold cross validation"""
-    train_test_list: list[TrainTestData] = create_train_test_data(ctry_df, folds)
-    fold_rmse_list: list[float] = []    
-    for data in train_test_list:
-        fold_rmse = get_mean_var_rmse(data, maxlag, alpha)
-        fold_rmse_list.append(fold_rmse)
+
+    train_test_list = create_train_test_data(ctry_df, folds)
+
+    fold_var_res_list = [get_fold_var_res(data, maxlag, alpha) for data in train_test_list]
+
+    fold_rmse_list = [fr.rmse for fr in fold_var_res_list]
+    fold_fully_stationary_list = [fr.is_fully_stationary for fr in fold_var_res_list]
+    fold_stationary_itas_list= [fr.stationary_itas for fr in fold_var_res_list]
+    fold_train_length_list= [fr.train_length for fr in fold_var_res_list]
+    fold_test_length_list= [fr.test_length for fr in fold_var_res_list]
+
     mean_rmse_folds = np.mean(fold_rmse_list)
-    return mean_rmse_folds
+    mean_fully_stationary_folds = np.mean(fold_fully_stationary_list)
+    mean_stationary_itas_folds = np.mean(fold_stationary_itas_list)
+    mean_train_length_folds = np.mean(fold_train_length_list)
+    mean_test_length_folds = np.mean(fold_test_length_list)
 
+    return MeanVARResults(mean_rmse_folds, mean_stationary_itas_folds, mean_fully_stationary_folds, mean_train_length_folds, mean_test_length_folds)
 
-def get_mean_var_rmse_by_dev_status(unique_countrycodes: list[str], df: pd.DataFrame, maxlag: int) -> list[float]:
-    rmse_list = []
-    alpha = 0.05
-    for countrycode in unique_countrycodes:
+def extract_country_and_generate_var_res(countrycode: str, df: pd.DataFrame, maxlag:int, alpha: float) -> MeanVARResults:
+        """Given a countrycode, dataframe containing multiple country data and var parameters creates MeanVARResults"""
         ctry_df = df.loc[df['countrycode'] == countrycode]
         ctry_df = ctry_df.drop(columns=["countrycode"])
+        return get_var_res_by_country(ctry_df, maxlag, alpha)
 
-        unique_ctry_rmse = get_mean_var_rmse_by_country(ctry_df, maxlag, alpha)
+def get_var_res_by_dev_status(unique_countrycodes: list[str], df: pd.DataFrame, maxlag: int):
+    alpha = 0.05
 
-        rmse_list.append(unique_ctry_rmse)
+    countrys_res = [extract_country_and_generate_var_res(code, df, maxlag, alpha) for code in unique_countrycodes]
+    
+    rmse_list = [res.mean_rmse for res in countrys_res]
+    fully_stationary_list = [res.mean_fully_stationary for res in countrys_res]
+    stationary_itas_list = [res.mean_stationary_itas for res in countrys_res]
+    train_length_list = [res.mean_train_length for res in countrys_res]
+    test_length_list = [res.mean_test_length for res in countrys_res]
+
     mean_rmse = np.mean(rmse_list)
-    return mean_rmse
+    mean_fully_stationary = np.mean(fully_stationary_list)
+    mean_stationary_itas = np.mean(stationary_itas_list)
+    mean_train_length = np.mean(train_length_list)
+    mean_test_length = np.mean(test_length_list)
+
+    return MeanVARResults(mean_rmse, mean_stationary_itas, mean_fully_stationary, mean_train_length, mean_test_length)
+
+def plot_simple_bar(x_data: list, y_data: list, x_label: str, y_label: str, title: str):
+    fig = plt.figure(figsize = (10, 5))
+
+    plt.bar(x_data, y_data, color ='maroon', 
+            width = 0.4)
+    
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(title)
+    plt.show()
 
 def plot_dev_status_var_results(df):
     #TODO: Want to plot country amount per dev status
     dev_status = df["Development status"].tolist()
     rmse = df["Mean RMSE"].tolist()
+    country_amt = df["Country amount"].tolist()
+    statonary_itas = df["Mean stationary itas"].tolist()
+    fully_stationary = df["Mean fully stationary"].tolist()
+    train_length = df["Mean train length"].tolist()
+    test_length = df["Mean test length"].tolist()
+    
     #TODO: Fix, kind of ugly
     #Remove least developed because it is an extreme outlier
     #dev_status.pop(1)
     #rmse.pop(1)
-    
-    fig = plt.figure(figsize = (10, 5))
 
-    plt.bar(dev_status, rmse, color ='maroon', 
-            width = 0.4)
-    
-    plt.xlabel("Development status")
-    plt.ylabel("Mean VAR RMSE")
-    plt.title("Mean VAR RMSE by Development status")
-    plt.show()
+    plot_simple_bar(dev_status, rmse, "Development status", "Mean VAR RMSE", "Mean VAR RMSE by Development status")
+    plot_simple_bar(dev_status, country_amt, "Development status", "Country amount", "Country amount by Development status")
+    plot_simple_bar(dev_status, statonary_itas, "Development status", "Mean training differencing itas", "Mean differencing itas by Development status")
+    plot_simple_bar(dev_status, fully_stationary, "Development status", "% of training data stationary", "% of stationary training data by Development status")
+    plot_simple_bar(dev_status, train_length, "Development status", "Mean training length", "Mean training length by Development status")
+    plot_simple_bar(dev_status, test_length, "Development status", "Mean testing length", "Mean testing length by Development status")
+
 
 def VAR_pipeline(df_list: list[pd.DataFrame]):
     #for country data in list make var model, after which take the mean rmse as a result for VAR model for that dev status
     maxlag = 8 # FIXME: what is the right max lag???
-    res_df: pd.DataFrame = pd.DataFrame(columns = ['Development status', "Country amount", 'Mean RMSE'])     #TODO: want to use save more columns for each test
+    #TODO: want to use save more columns for each test
+    res_df: pd.DataFrame = pd.DataFrame(columns = ['Development status', "Country amount", 'Mean RMSE', "Mean stationary itas", "Mean fully stationary", "Mean train length", "Mean test length"]) 
     for df in df_list:
         dev_status = df["economy"][0]
         df = df.drop(columns=["economy"])
         unique_countrycodes = df["countrycode"].unique()
         country_amt = len(unique_countrycodes)
         
-        #TODO: Implement Different measurements
-        mean_rmse = get_mean_var_rmse_by_dev_status(unique_countrycodes, df, maxlag)
+        dev_stat_var_res = get_var_res_by_dev_status(unique_countrycodes, df, maxlag)
 
-        res_df = pd.concat([res_df, pd.DataFrame([{"Development status" : dev_status, "Country amount": country_amt, "Mean RMSE": mean_rmse }])], ignore_index=True)
+        res_df = pd.concat([res_df, pd.DataFrame([
+            {
+                "Development status" : dev_status, 
+                "Country amount": country_amt, 
+                "Mean RMSE": dev_stat_var_res.mean_rmse,
+                "Mean stationary itas" : dev_stat_var_res.mean_stationary_itas,
+                "Mean fully stationary": dev_stat_var_res.mean_fully_stationary,
+                "Mean train length" : dev_stat_var_res.mean_train_length,
+                "Mean test length" : dev_stat_var_res.mean_test_length
+                }])], ignore_index=True)
 
     plot_dev_status_var_results(res_df)
     res_df.to_csv("./VAR dev status results.csv", index=False)
