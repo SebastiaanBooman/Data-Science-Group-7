@@ -113,7 +113,28 @@ def create_train_test_data(df: pd.DataFrame, folds: int)-> list[TrainTestData]:
                     test = df.take(test_index)))
     return train_test_list
 
-def get_fold_var_res(data: TrainTestData, maxlag: int, alpha: float) -> FoldVARResults:
+def plot_country_results(df_train, df_test, train_length, test_length, df_forecast, gdp, rmse, country_name):  
+    fig, ax = plt.subplots(1, 1)
+
+    ax.plot(df_train[-train_length:][gdp], color='black', label='Train')
+    ax.plot(df_test[:test_length][gdp], color='tab:blue', label = 'Test')
+    ax.plot(df_forecast[gdp], color = 'tab:orange', label = 'Forecast')
+    #ax.fill_between(df_forecast[gdp].index, df_lower_error[gdp].values, df_upper_error[gdp].values, color = 'bisque', label='95% CI')
+
+    ax.xaxis.set_ticks_position('none')
+    ax.yaxis.set_ticks_position('none')
+    ax.spines['top'].set_alpha(0)
+    ax.tick_params(labelsize = 6)
+    ax.set_title(f'{country_name} GDP')
+    ax.set_title(f'RMSE: {rmse}', loc = 'left', x = 0.04, y = 0.9, fontsize = 'small')
+    ax.legend(loc = 'lower right')
+    ax.spines[['right', 'top']].set_visible(False)
+
+    plt.show()
+    #plt.clf()
+
+
+def get_fold_var_res(data: TrainTestData, maxlag: int, countrycode: str, dependent_name: str) -> FoldVARResults:
     """Using a train test split `data` creates a VAR model and calculates rmse"""
     #TODO: What to do with folds which train set contain less than 20 values?
     df_train_stationary_itas = 0
@@ -127,22 +148,23 @@ def get_fold_var_res(data: TrainTestData, maxlag: int, alpha: float) -> FoldVARR
     var_model = create_VAR_for_model(data.train, maxlag)
     data_test_len = len(data.test)
     # Do the forecast
-    #TODO: Want to omit lower and upper by using var_model.forecast() instead. However doesnt allow for alpha param -> figure this out
-    mid, lower, upper = var_model.forecast_interval(data.train.values[-maxlag:], steps = data_test_len, alpha = alpha)
+    mid = var_model.forecast(data.train.values[-maxlag:], steps = data_test_len)
     # Put it into a dataframe
     df_forecast_diff = pd.DataFrame(mid, columns = data.train.columns, index = data.test.iloc[:data_test_len].index)
     # Reverse the differencing
     #TODO: Are we allowed to just take [-1] as value (commented part is original)
     df_forecast = df_forecast_diff.cumsum() + data.train.iloc[-1] # data.train[data.train.index < df_forecast_diff.index[0]].iloc[-1]
-    rmse = mean_squared_error(df_forecast['cgdpo'], data.test['cgdpo'].values[:data_test_len], squared = False)
+    rmse = mean_squared_error(df_forecast[dependent_name], data.test[dependent_name].values[:data_test_len], squared = False)
+
+    plot_country_results(data.train, data.test, len(data.train), data_test_len, df_forecast, dependent_name, rmse, countrycode)
     return FoldVARResults(rmse, df_train_fully_stationary, df_train_stationary_itas, len(data.train), data_test_len)
 
-def get_var_res_by_country(ctry_df: pd.DataFrame, maxlag: int, alpha, folds: int = 4) -> MeanVARResults:
+def get_var_res_by_country(ctry_df: pd.DataFrame, maxlag: int, countrycode: str, dependent_name: str, folds: int = 4) -> MeanVARResults:
     """TODO: Docstring Using KFold cross validation"""
 
     train_test_list = create_train_test_data(ctry_df, folds)
 
-    fold_var_res_list = [get_fold_var_res(data, maxlag, alpha) for data in train_test_list]
+    fold_var_res_list = [get_fold_var_res(data, maxlag, countrycode, dependent_name) for data in train_test_list]
 
     fold_rmse_list = [fr.rmse for fr in fold_var_res_list]
     fold_fully_stationary_list = [fr.is_fully_stationary for fr in fold_var_res_list]
@@ -158,16 +180,16 @@ def get_var_res_by_country(ctry_df: pd.DataFrame, maxlag: int, alpha, folds: int
 
     return MeanVARResults(mean_rmse_folds, mean_stationary_itas_folds, mean_fully_stationary_folds, mean_train_length_folds, mean_test_length_folds)
 
-def extract_country_and_generate_var_res(countrycode: str, df: pd.DataFrame, maxlag:int, alpha: float) -> MeanVARResults:
+def extract_country_and_generate_var_res(countrycode: str, df: pd.DataFrame, maxlag:int, dependent_name: str) -> MeanVARResults:
         """Given a countrycode, dataframe containing multiple country data and var parameters creates MeanVARResults"""
         ctry_df = df.loc[df['countrycode'] == countrycode]
         ctry_df = ctry_df.drop(columns=["countrycode"])
-        return get_var_res_by_country(ctry_df, maxlag, alpha)
+        return get_var_res_by_country(ctry_df, maxlag, countrycode, dependent_name)
 
-def get_var_res_by_dev_status(unique_countrycodes: list[str], df: pd.DataFrame, maxlag: int):
+def get_var_res_by_dev_status(unique_countrycodes: list[str], df: pd.DataFrame, maxlag: int, dependent_name: str):
     alpha = 0.05
 
-    countrys_res = [extract_country_and_generate_var_res(code, df, maxlag, alpha) for code in unique_countrycodes]
+    countrys_res = [extract_country_and_generate_var_res(code, df, maxlag, dependent_name) for code in unique_countrycodes]
     
     rmse_list = [res.mean_rmse for res in countrys_res]
     fully_stationary_list = [res.mean_fully_stationary for res in countrys_res]
@@ -217,7 +239,7 @@ def plot_dev_status_var_results(df):
     plot_simple_bar(dev_status, test_length, "Development status", "Mean testing length", "Mean testing length by Development status")
 
 
-def VAR_pipeline(df_list: list[pd.DataFrame]):
+def VAR_pipeline(df_list: list[pd.DataFrame], dependent_name: str):
     #for country data in list make var model, after which take the mean rmse as a result for VAR model for that dev status
     maxlag = 8 # FIXME: what is the right max lag???
     #TODO: want to use save more columns for each test
@@ -228,7 +250,7 @@ def VAR_pipeline(df_list: list[pd.DataFrame]):
         unique_countrycodes = df["countrycode"].unique()
         country_amt = len(unique_countrycodes)
         
-        dev_stat_var_res = get_var_res_by_dev_status(unique_countrycodes, df, maxlag)
+        dev_stat_var_res = get_var_res_by_dev_status(unique_countrycodes, df, maxlag, dependent_name)
 
         res_df = pd.concat([res_df, pd.DataFrame([
             {
@@ -257,8 +279,7 @@ class DevStatusLevel(Enum):
     ALL = 1
     ONLY_DEV_UNDEVELOPED = 2
     MERGED_SUBSET = 3
-
-
+    ONLY_DEVELOPED = 4
 
 def remove_suffix_dev_status(dev_status: str) -> str:
     split_dev_status = dev_status.split()
@@ -273,14 +294,23 @@ def filter_only_dev_and_undeveloped_status(dev_status: str) -> str:
         cleaned_status = "Undeveloped region"
     return cleaned_status 
 
+def only_developed_status(dev_status: str) -> str:
+    cleaned_status = remove_suffix_dev_status(dev_status)
+    if not cleaned_status.startswith("Developed region"):
+        cleaned_status = "Undeveloped region"
+    return cleaned_status 
+
 def init_data(dev_sat_level: DevStatusLevel):
     print("Importing Penn World Table...")
     pwt = pd.read_excel('./Data/pwt1001.xlsx',
                     sheet_name = 'Data',
                     parse_dates = ['year'],
                     index_col = 3)
-    gdp = 'cgdpo'
-    pwt = pwt[[gdp, 'ccon', 'rdana', "countrycode"]]
+    gdp_type = 'rgdpna' #'cgdpo'
+    dependent_var = "gdp_growth"
+    pwt[f'{gdp_type}_lag'] = pwt.groupby(['countrycode'])[gdp_type].shift(1)
+    pwt[dependent_var] = pwt.apply(lambda row : (row[gdp_type] - row[f'{gdp_type}_lag']) / row[f'{gdp_type}_lag'], axis = 1)
+    pwt = pwt[[dependent_var, 'ccon', 'rdana', "countrycode"]]
     pwt = pwt.dropna()
 
     country_dev_status_df = pd.read_csv('./Data/dev_status.csv')
@@ -292,6 +322,8 @@ def init_data(dev_sat_level: DevStatusLevel):
             country_dev_status_df["economy"] = country_dev_status_df["economy"].apply(filter_only_dev_and_undeveloped_status)
         case DevStatusLevel.MERGED_SUBSET:
             country_dev_status_df["economy"] = country_dev_status_df["economy"].apply(remove_suffix_dev_status)
+        case DevStatusLevel.ONLY_DEVELOPED:
+            country_dev_status_df = country_dev_status_df[country_dev_status_df["economy"].apply(lambda x: x.startswith("Developed region"))]
         case _:
             raise NotImplementedError
         
@@ -300,5 +332,5 @@ def init_data(dev_sat_level: DevStatusLevel):
     return create_pwt_dev_status_subset(unique_eco_statuses, country_dev_status_df, pwt)
 
 if __name__ == "__main__":
-    pwt_by_dev_status_df_list = init_data(DevStatusLevel.ONLY_DEV_UNDEVELOPED) 
-    VAR_pipeline(pwt_by_dev_status_df_list)
+    pwt_by_dev_status_df_list = init_data(DevStatusLevel.ONLY_DEVELOPED) 
+    VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth")
