@@ -10,6 +10,7 @@ from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt 
 from sklearn.model_selection import KFold
 from dataclasses import dataclass
+from enum import Enum
 
 #TODO: Move parts to different files for clarity/readability
 @dataclass
@@ -252,9 +253,29 @@ def create_pwt_dev_status_subset(dev_statuses: list[str], dev_status_df: pd.Data
         dev_stat_df_list.append(joined_df.loc[joined_df["economy"] == dev_stat])
     return dev_stat_df_list
 
-def init_data():
+class DevStatusLevel(Enum):
+    ALL = 1
+    ONLY_DEV_UNDEVELOPED = 2
+    MERGED_SUBSET = 3
+
+
+
+def remove_suffix_dev_status(dev_status: str) -> str:
+    split_dev_status = dev_status.split()
+    if split_dev_status[-2].endswith(":"):
+        dev_status = dev_status.rsplit(" ", 1)[0].rstrip(":")
+        print()
+    return dev_status
+
+def filter_only_dev_and_undeveloped_status(dev_status: str) -> str:
+    cleaned_status = remove_suffix_dev_status(dev_status)
+    if not cleaned_status.startswith("Developed region"):
+        cleaned_status = "Undeveloped region"
+    return cleaned_status 
+
+def init_data(dev_sat_level: DevStatusLevel):
     print("Importing Penn World Table...")
-    pwt = pd.read_excel('../../Data/pwt1001.xlsx',
+    pwt = pd.read_excel('./Data/pwt1001.xlsx',
                     sheet_name = 'Data',
                     parse_dates = ['year'],
                     index_col = 3)
@@ -262,13 +283,22 @@ def init_data():
     pwt = pwt[[gdp, 'ccon', 'rdana', "countrycode"]]
     pwt = pwt.dropna()
 
-    country_dev_status_df = pd.read_csv('../../Data/dev_status.csv')
+    country_dev_status_df = pd.read_csv('./Data/dev_status.csv')
+
+    match dev_sat_level:
+        case DevStatusLevel.ALL: 
+            pass #Default data         
+        case DevStatusLevel.ONLY_DEV_UNDEVELOPED:
+            country_dev_status_df["economy"] = country_dev_status_df["economy"].apply(filter_only_dev_and_undeveloped_status)
+        case DevStatusLevel.MERGED_SUBSET:
+            country_dev_status_df["economy"] = country_dev_status_df["economy"].apply(remove_suffix_dev_status)
+        case _:
+            raise NotImplementedError
+        
     unique_eco_statuses = country_dev_status_df["economy"].unique()
 
-    pwt_by_dev_status_df_list = create_pwt_dev_status_subset(unique_eco_statuses, country_dev_status_df, pwt)
-
-    return pwt_by_dev_status_df_list
+    return create_pwt_dev_status_subset(unique_eco_statuses, country_dev_status_df, pwt)
 
 if __name__ == "__main__":
-    pwt_by_dev_status_df_list = init_data()
+    pwt_by_dev_status_df_list = init_data(DevStatusLevel.ONLY_DEV_UNDEVELOPED) 
     VAR_pipeline(pwt_by_dev_status_df_list)
