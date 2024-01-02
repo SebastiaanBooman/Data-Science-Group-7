@@ -8,4 +8,4 @@ Output/
 *.exe
 *.chromedriver
 ~$*
-Python/Models/__pycache__/
+*__pycache__/
