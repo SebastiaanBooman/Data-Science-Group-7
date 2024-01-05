@@ -8,7 +8,7 @@ class DevStatusLevel(Enum):
     ONLY_DEVELOPED = 4
 
 class PWTDevStatusGenerator:
-    def subset_pwt_by_dev_stat(dev_stat_level: DevStatusLevel):
+    def subset_pwt_by_dev_stat(dev_stat_level: DevStatusLevel, indep_vars: list[str]):
         print("Importing Penn World Table...")
         pwt = pd.read_excel('../../../Data/pwt1001.xlsx',
                         sheet_name = 'Data',
@@ -18,7 +18,8 @@ class PWTDevStatusGenerator:
         dependent_var = "gdp_growth"
         pwt[f'{gdp_type}_lag'] = pwt.groupby(['countrycode'])[gdp_type].shift(1)
         pwt[dependent_var] = pwt.apply(lambda row : (row[gdp_type] - row[f'{gdp_type}_lag']) / row[f'{gdp_type}_lag'], axis = 1)
-        pwt = pwt[[dependent_var, 'ccon', 'rdana', "countrycode"]]
+        indep_vars.extend([dependent_var, "countrycode"])
+        pwt = pwt[indep_vars]
         pwt = pwt.dropna()
 
         country_dev_status_df = pd.read_csv('../../../Data/dev_status.csv')

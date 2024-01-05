@@ -1,15 +1,30 @@
 import pandas as pd
 from statsmodels.tsa.api import VAR
-from VARDataClasses import VARHyperParams
+from VARDataClasses import VARPredictionResult, VARHyperParams
 from VARModel import VARModel
 
 class VARParameterSelection:
-    def var_parameter_search(model: VAR, target_column:str, df_train:pd.DataFrame, df_diff:pd.DataFrame, df_test:pd.DataFrame, maxlag = 10, max_queue_length: int = 10) -> list[VARHyperParams]:
+    def var_parameter_search(
+            model: VAR, 
+            target_column:str, 
+            df_train:pd.DataFrame, 
+            df_diff:pd.DataFrame, 
+            df_test:pd.DataFrame, 
+            maxlag = 10, 
+            max_queue_length: int = 10
+        ) -> list[tuple[VARPredictionResult, pd.DataFrame]]:
+        #TODO: Proper docstring
+        #TODO: Want to change the return tuple to a dataclass also? Or this creates too much indirection?
+        """
+        Uses data to forecast on VAR models created with different hyperparameters. Returns a list with <= `maxlag` amount of results.
+        First element of tuple is hyperparams and rmse, second is the undifferenced forecast corresponding to the parameters
+        """
+
         best_rmse = float('inf')
         best_parameters = []
-        trends = ['n', 'c', 'ct', 'ctt']
+
         for lag in range(1,maxlag+1, 1):
-            for trend in trends:
+            for trend in ['n', 'c', 'ct', 'ctt']:
                 model_res = model.fit(
                     maxlags=lag,
                     method= 'ols',
@@ -17,19 +32,22 @@ class VARParameterSelection:
                     trend=trend
                 )
 
-                new_rmse = VARModel.forecast_using_var_model(model_res, df_train, df_test, df_diff, maxlag, target_column).rmse
-                if new_rmse < best_rmse:
+                forecast_res = VARModel.forecast_using_var_model(model_res, df_train, df_test, df_diff, maxlag, target_column)
+                if forecast_res.rmse < best_rmse:
                     print(f"better params found with lag: {lag}, and trend: {trend}")
-                    best_rmse = new_rmse
+                    best_rmse = forecast_res.rmse
                     best_parameters =  VARParameterSelection.__append_parameters(best_params=best_parameters,
-                                        params= VARHyperParams(lag, trend, best_rmse),
+                                        #TODO: Might be slow to create this many objects
+                                        params= [VARPredictionResult(best_rmse, VARHyperParams(trend, lag)), forecast_res.pred],
                                         max_queue_length=max_queue_length)
         
-        #built-in reverse didn't work so this will have to do 
+        #TODO built-in reverse didn't work so this will have to do 
+        #best_params_copy = best_parameters.copy()
         best_parameters = VARParameterSelection.__reverse(best_parameters)
+        #best_params_test = best_params_copy.reverse()
         return best_parameters
 
-    def __append_parameters(best_params: list[VARHyperParams], params: VARHyperParams, max_queue_length = 10) -> list[VARHyperParams]:
+    def __append_parameters(best_params: list[tuple[VARPredictionResult, pd.DataFrame]], params: tuple[VARPredictionResult, pd.DataFrame], max_queue_length: int) -> list[VARPredictionResult]:
         best_params.append(params)
         
         #remove excess parameters from list

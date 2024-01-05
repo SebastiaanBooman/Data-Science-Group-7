@@ -2,23 +2,25 @@ import pandas as pd
 from statsmodels.tsa.api import VAR
 from sklearn.metrics import mean_squared_error
 from dataclasses import dataclass
+from VARDataClasses import VARHyperParams
 
 @dataclass
 class ForecastResult:
     rmse: float
-    df: pd.DataFrame
+    pred: pd.DataFrame
 
 class VARModel:
-    def create_var_model(train_df, maxlag):
-        model = VAR(train_df, freq = train_df.index.inferred_freq)
+    def create_var_model(train_df):
+        return VAR(train_df, freq = train_df.index.inferred_freq)
 
+    def fit_var_model(model: VAR, var_params: VARHyperParams):
         return model.fit(
-            maxlags = maxlag,
+            maxlags = var_params.lag,
             method  = 'ols',
             ic      = None,
-            trend   = 'c' # Add constant test change to n
+            trend   = var_params.trend
         )
-    
+
     def forecast_using_var_model(var_model, undiff_train_data: pd.DataFrame, 
                                  undiff_test_data: pd.DataFrame, diff_train_df: pd.DataFrame, maxlag: int, dependent_name) -> ForecastResult:
                                     
