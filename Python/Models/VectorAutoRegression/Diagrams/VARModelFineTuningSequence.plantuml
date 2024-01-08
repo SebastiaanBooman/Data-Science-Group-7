@@ -1,0 +1,47 @@
+@startuml
+skinparam TitleFontSize 35
+skinparam actorFontSize 16
+skinparam ParticipantFontSize 16
+hide footbox
+title Model finetuning sequence diagram
+
+actor "Data Scientist" as DS #Gold
+participant VARModelTuning.py as VMT            #ADD1B2
+participant PWTDataManager.py as PWTDM          #E3664A
+participant StationaryFunctions.py as SF        #A9DCDF
+participant VARParameterSelection.py as VPS     #B4A7E5
+participant VARExportReslts.py as VER           #EB937F
+
+activate DS #Gold
+DS -> DS: Feature selection
+DS -> VMT: Fine tune VAR models
+deactivate DS 
+
+activate VMT #ADD1B2
+VMT -> PWTDM: Get subset PWT by dev status
+activate PWTDM #E3664A
+VMT <-- PWTDM
+deactivate PWTDM
+loop for each dev status
+            loop for each country 
+                VMT -> VMT: Split data in folds
+                loop for each fold 
+                    VMT -> SF: Make data stationary
+                    activate SF #A9DCDF
+                    'VMT <-- SF
+                    deactivate SF
+                    VMT -> VPS: Calculate best VAR parameters
+                    activate VPS #B4A7E5
+                    'VMT <-- VPS
+                    deactivate VPS
+                end
+                VMT -> VMT: Calculate mean fold results
+            end
+            VMT -> VMT: Calculate mean country results
+            VMT -> VMT: Calculate mode fold results
+        end
+VMT -> VER: export results
+deactivate VMT
+activate VER #EB937F
+deactivate VER
+@enduml
