@@ -198,6 +198,6 @@ class VARByDevStatusKFold:
             res_df.to_csv("./VAR dev status results.csv", index=False)
 
 if __name__ == "__main__":
-    indep_vars = ['ccon', 'rdana'] 
+    indep_vars = ['ccon', 'rdana', 'cda', 'hc', 'emp', 'pop'] 
     pwt_by_dev_status_df_list = PWTDevStatusGenerator.subset_pwt_by_dev_stat(DevStatusLevel.ONLY_DEVELOPED, list(indep_vars)) 
     VARByDevStatusKFold.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, True)
