@@ -1,7 +1,6 @@
 # This makes sure Pandas keeps it mouth shut
 import warnings
 warnings.simplefilter(action = 'ignore', category = FutureWarning)
-import json
 import pandas as pd
 import numpy as np
 from statsmodels.tsa.api import VAR
@@ -9,12 +8,12 @@ from sklearn.model_selection import KFold
 from VARDataClasses import FoldVARResults, MeanVARResults, TrainTestData, AggregatedFoldVARResults, VARHyperParams, DevStatusResult, CountryVARResult, VARExportClass
 from dataclasses import asdict
 from PWTDevStatus import PWTDevStatusGenerator, DevStatusLevel
-#from VARModel import VARModel TODO: Already fit and forecasted in var_param_search, perhaps want to create functionalty to return the best fitted model?
 from StationaryFunctions import Stationary
 from VARExportResults import ExportVARResults
 from VARParameterSelection import VARParameterSelection
 
-class VARByDevStatusKFold:
+class VARModelTuning:
+    """Contains functionality to tune and compare different VAR countries using hyper parameter selection on development status, country, and fold basis"""
     def create_train_test_data(df: pd.DataFrame, folds: int)-> list[TrainTestData]: 
         """Takes data and splits it up in `folds` folds for training and testing sets"""
         kf = KFold(n_splits=folds, random_state=None, shuffle= False)
@@ -60,9 +59,9 @@ class VARByDevStatusKFold:
     def get_var_res_by_country(ctry_df: pd.DataFrame, maxlag: int, countrycode: str, dependent_name: str, plot_res: bool, folds: int) -> CountryVARResult:
         """TODO: Docstring Using KFold cross validation"""
 
-        train_test_list = VARByDevStatusKFold.create_train_test_data(ctry_df, folds)
+        train_test_list = VARModelTuning.create_train_test_data(ctry_df, folds)
 
-        fold_var_res_list = [VARByDevStatusKFold.get_fold_var_res(data, maxlag, countrycode, dependent_name, i + 1, plot_res) for i, data in enumerate(train_test_list)]
+        fold_var_res_list = [VARModelTuning.get_fold_var_res(data, maxlag, countrycode, dependent_name, i + 1, plot_res) for i, data in enumerate(train_test_list)]
 
         fold_rmse_list = [fr.pred_res.rmse for fr in fold_var_res_list]
         fold_fully_stationary_list = [fr.is_fully_stationary for fr in fold_var_res_list]
@@ -125,43 +124,20 @@ class VARByDevStatusKFold:
         ctry_df = df.loc[df['countrycode'] == countrycode]
         ctry_df = ctry_df.drop(columns=["countrycode"])
 
-        var_res_by_country = VARByDevStatusKFold.get_var_res_by_country(ctry_df, maxlag, countrycode, dependent_name, plot_res, folds)
+        var_res_by_country = VARModelTuning.get_var_res_by_country(ctry_df, maxlag, countrycode, dependent_name, plot_res, folds)
         return var_res_by_country
 
     def get_var_res_by_dev_status(country_amount: int, dev_status: str, unique_countrycodes: list[str], df: pd.DataFrame, maxlag: int, dependent_name: str, plot_res: bool) -> DevStatusResult:
         """TODO: Docstring"""
         folds = 4
-        countrys_res = [VARByDevStatusKFold.extract_country_and_generate_var_res(code, df, maxlag, dependent_name, plot_res, folds) for code in unique_countrycodes]
+        countrys_res = [VARModelTuning.extract_country_and_generate_var_res(code, df, maxlag, dependent_name, plot_res, folds) for code in unique_countrycodes]
 
-        country_mean_var = VARByDevStatusKFold.calc_mean_from_country_var_res(countrys_res) 
-        res_by_fold = VARByDevStatusKFold.calculate_fold_var_res(countrys_res, folds)
+        country_mean_var = VARModelTuning.calc_mean_from_country_var_res(countrys_res) 
+        res_by_fold = VARModelTuning.calculate_fold_var_res(countrys_res, folds)
         
         return DevStatusResult(dev_status, country_amount, country_mean_var, res_by_fold) 
 
-    def plot_dev_status_var_results(df) -> None:
-        """TODO: Docstring"""
-        #TODO: Want to plot country amount per dev status
-        dev_status = df["Development status"].tolist()
-        rmse = df["Mean RMSE"].tolist()
-        country_amt = df["Country amount"].tolist()
-        statonary_itas = df["Mean stationary itas"].tolist()
-        fully_stationary = df["Mean fully stationary"].tolist()
-        train_length = df["Mean train length"].tolist()
-        test_length = df["Mean test length"].tolist()
-        
-        #TODO: Fix, kind of ugly
-        #Remove least developed because it is an extreme outlier
-        #dev_status.pop(1)
-        #rmse.pop(1)
-
-        ExportVARResults.plot_simple_bar(dev_status, rmse, "Development status", "Mean VAR RMSE", "Mean VAR RMSE by Development status")
-        ExportVARResults.plot_simple_bar(dev_status, country_amt, "Development status", "Country amount", "Country amount by Development status")
-        ExportVARResults.plot_simple_bar(dev_status, statonary_itas, "Development status", "Mean training differencing itas", "Mean differencing itas by Development status")
-        ExportVARResults.plot_simple_bar(dev_status, fully_stationary, "Development status", "% of training data stationary", "% of stationary training data by Development status")
-        ExportVARResults.plot_simple_bar(dev_status, train_length, "Development status", "Mean training length", "Mean training length by Development status")
-        ExportVARResults.plot_simple_bar(dev_status, test_length, "Development status", "Mean testing length", "Mean testing length by Development status")
-
-    def VAR_pipeline(df_list: list[pd.DataFrame], dependent_name: str, indep_names: list[str], plot_res: bool, export_csv: bool) -> None:
+    def VAR_pipeline(df_list: list[pd.DataFrame], dependent_name: str, indep_names: list[str], plot_res: bool, export_csv: bool, export_json: bool) -> None:
         """TODO: Docstring"""
         maxlag = 8 # FIXME: what is the right max lag???
         res_df: pd.DataFrame = pd.DataFrame(columns = ['Development status', "Country amount", 'Mean RMSE', "Mean stationary itas", "Mean fully stationary", "Mean train length", "Mean test length"]) 
@@ -172,7 +148,7 @@ class VARByDevStatusKFold:
             unique_countrycodes = df["countrycode"].unique()
             country_amt = len(unique_countrycodes)
             
-            dev_stat_var_res = VARByDevStatusKFold.get_var_res_by_dev_status(country_amt, dev_status, unique_countrycodes, df, maxlag, dependent_name, plot_res)
+            dev_stat_var_res = VARModelTuning.get_var_res_by_dev_status(country_amt, dev_status, unique_countrycodes, df, maxlag, dependent_name, plot_res)
             dev_status_var_res_list.append(dev_stat_var_res)
 
             res_df = pd.concat([res_df, pd.DataFrame([
@@ -186,13 +162,11 @@ class VARByDevStatusKFold:
                     "Mean test length" : dev_stat_var_res.mean_var_results.mean_test_length
                     }])], ignore_index=True)
 
-        export_obj = asdict(VARExportClass(dependent_name, indep_names, dev_status_var_res_list))
-        #TODO: option to export JSON, save methods in VARExportResults.py
-        with open("./VAR dev status results.json", "w") as f:
-            json.dump(export_obj, f)
-        
+        if export_json:
+            ExportVARResults.save_json(asdict(VARExportClass(dependent_name, indep_names, dev_status_var_res_list)), "./VAR dev status results.json")
+
         if plot_res:
-            VARByDevStatusKFold.plot_dev_status_var_results(res_df)
+            ExportVARResults.plot_dev_status_var_results(res_df)
         
         if export_csv:
             res_df.to_csv("./VAR dev status results.csv", index=False)
@@ -200,4 +174,4 @@ class VARByDevStatusKFold:
 if __name__ == "__main__":
     indep_vars = ['ccon', 'rdana', 'cda', 'hc', 'emp', 'pop'] 
     pwt_by_dev_status_df_list = PWTDevStatusGenerator.subset_pwt_by_dev_stat(DevStatusLevel.ONLY_DEVELOPED, list(indep_vars)) 
-    VARByDevStatusKFold.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, True)
+    VARModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, True, True)

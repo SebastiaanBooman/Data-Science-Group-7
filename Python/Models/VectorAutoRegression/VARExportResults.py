@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt 
+import json
 
 class ExportVARResults:
     def plot_country_results(df_train, df_test, train_length, test_length, df_forecast, gdp, rmse, country_name):  
@@ -31,3 +32,30 @@ class ExportVARResults:
         plt.ylabel(y_label)
         plt.title(title)
         plt.show()
+    
+    def plot_dev_status_var_results(df) -> None:
+        """TODO: Docstring"""
+        #TODO: Want to plot country amount per dev status
+        dev_status = df["Development status"].tolist()
+        rmse = df["Mean RMSE"].tolist()
+        country_amt = df["Country amount"].tolist()
+        statonary_itas = df["Mean stationary itas"].tolist()
+        fully_stationary = df["Mean fully stationary"].tolist()
+        train_length = df["Mean train length"].tolist()
+        test_length = df["Mean test length"].tolist()
+        
+        #TODO: Fix, kind of ugly
+        #Remove least developed because it is an extreme outlier
+        #dev_status.pop(1)
+        #rmse.pop(1)
+
+        ExportVARResults.plot_simple_bar(dev_status, rmse, "Development status", "Mean VAR RMSE", "Mean VAR RMSE by Development status")
+        ExportVARResults.plot_simple_bar(dev_status, country_amt, "Development status", "Country amount", "Country amount by Development status")
+        ExportVARResults.plot_simple_bar(dev_status, statonary_itas, "Development status", "Mean training differencing itas", "Mean differencing itas by Development status")
+        ExportVARResults.plot_simple_bar(dev_status, fully_stationary, "Development status", "% of training data stationary", "% of stationary training data by Development status")
+        ExportVARResults.plot_simple_bar(dev_status, train_length, "Development status", "Mean training length", "Mean training length by Development status")
+        ExportVARResults.plot_simple_bar(dev_status, test_length, "Development status", "Mean testing length", "Mean testing length by Development status")
+
+    def save_json(obj: object, path: str):
+        with open(path, "w") as f:
+            json.dump(export_obj, f)
