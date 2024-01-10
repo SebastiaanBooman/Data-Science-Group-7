@@ -35,10 +35,10 @@ loop for each dev status
                     'VMT <-- VPS
                     deactivate VPS
                 end
-                VMT -> VMT: Calculate mean fold results
+                'VMT -> VMT: Calculate mean fold results
             end
-            VMT -> VMT: Calculate mean country results
-            VMT -> VMT: Calculate mode fold results
+            'VMT -> VMT: Calculate mean country results
+            VMT -> VMT: Calculate summary fold results
         end
 VMT -> VER: export results
 deactivate VMT

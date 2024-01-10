@@ -56,6 +56,11 @@ class ExportVARResults:
         ExportVARResults.plot_simple_bar(dev_status, train_length, "Development status", "Mean training length", "Mean training length by Development status")
         ExportVARResults.plot_simple_bar(dev_status, test_length, "Development status", "Mean testing length", "Mean testing length by Development status")
 
-    def save_json(obj: object, path: str):
+    def save_json(obj: object, path: str) -> None:
         with open(path, "w") as f:
             json.dump(obj, f)
+    
+    def load(path) -> {}:
+        with open(path, "r") as f:
+            return json.load(f)
+

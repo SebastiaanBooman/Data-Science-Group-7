@@ -127,7 +127,7 @@ class VARModelTuning:
 
             res_by_fold.append(
                 AggregatedFoldVARResults(
-                    fold + 1, 
+                    fold,
                     fold_amt,
                     mean_rmse,
                     VARHyperParams(
