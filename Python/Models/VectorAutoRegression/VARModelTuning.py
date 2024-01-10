@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from statsmodels.tsa.api import VAR
 from sklearn.model_selection import KFold
-from VARDataClasses import FoldVARResults, MeanVARResults, TrainTestData, AggregatedFoldVARResults, VARHyperParams, DevStatusResult, CountryVARResult, VARExportClass
+from VARDataClasses import VARPredictionResult, FoldVARResults, MeanVARResults, TrainTestData, AggregatedFoldVARResults, VARHyperParams, DevStatusResult, CountryVARResult, VARExportClass
 from dataclasses import asdict
 from PWTDevStatus import PWTDevStatusGenerator, DevStatusLevel
 from StationaryFunctions import Stationary
@@ -29,23 +29,26 @@ class VARModelTuning:
 
         df_train_copy = data.train.copy()
         df_train_stationary_res = Stationary.make_dataframe_stationary(df_train_copy)
-        df_train_diff = df_train_stationary_res.df
+        best_fit_pred_res = VARPredictionResult(0, VARHyperParams("NA", -1))
 
-        var_model = VAR(df_train_diff, freq = df_train_diff.index.inferred_freq) 
-        #TODO: Call var_param_search with queue length of one, maybe even deprecate ability to get bigger result if not necessary
-        best_fit_res = VARParameterSelection.var_parameter_search(var_model, dependent_name, data.train, df_train_diff, data.test, maxlag)[0]
+        if df_train_stationary_res.fully_stationary:
+            df_train_diff = df_train_stationary_res.df
+            var_model = VAR(df_train_diff, freq = df_train_diff.index.inferred_freq) 
+            #TODO: Call var_param_search with queue length of one, maybe even deprecate ability to get bigger result if not necessary
+            best_fit_res = VARParameterSelection.var_parameter_search(var_model, dependent_name, data.train, df_train_diff, data.test, maxlag)[0]
+            best_fit_pred_res = best_fit_res[0]
 
-        if plot_res:
-            ExportVARResults.plot_country_results(
-                data.train, 
-                data.test,
-                len(data.train),
-                len(data.test),
-                best_fit_res[1],
-                dependent_name,
-                best_fit_res[0].rmse,
-                countrycode
-            )
+            if plot_res:
+                ExportVARResults.plot_country_results(
+                    data.train, 
+                    data.test,
+                    len(data.train),
+                    len(data.test),
+                    best_fit_res[1],
+                    dependent_name,
+                    best_fit_pred_res.rmse,
+                    countrycode
+                )
 
         return FoldVARResults(
             fold_ita,
@@ -53,21 +56,29 @@ class VARModelTuning:
             df_train_stationary_res.itas, 
             len(data.train), 
             len(data.test),
-            best_fit_res[0]
+            best_fit_pred_res
         )
 
     def get_var_res_by_country(ctry_df: pd.DataFrame, maxlag: int, countrycode: str, dependent_name: str, plot_res: bool, folds: int) -> CountryVARResult:
         """TODO: Docstring Using KFold cross validation"""
 
-        train_test_list = VARModelTuning.create_train_test_data(ctry_df, folds)
+        train_test_data = VARModelTuning.create_train_test_data(ctry_df, folds)
 
-        fold_var_res_list = [VARModelTuning.get_fold_var_res(data, maxlag, countrycode, dependent_name, i + 1, plot_res) for i, data in enumerate(train_test_list)]
+        fold_var_res = [VARModelTuning.get_fold_var_res(data, maxlag, countrycode, dependent_name, i + 1, plot_res) for i, data in enumerate(train_test_data)]
 
-        fold_rmse_list = [fr.pred_res.rmse for fr in fold_var_res_list]
-        fold_fully_stationary_list = [fr.is_fully_stationary for fr in fold_var_res_list]
-        fold_stationary_itas_list= [fr.stationary_itas for fr in fold_var_res_list]
-        fold_train_length_list= [fr.train_length for fr in fold_var_res_list]
-        fold_test_length_list= [fr.test_length for fr in fold_var_res_list]
+        fold_fully_stationary_list = [fr.is_fully_stationary for fr in fold_var_res]
+
+        #Only want to calculate other statistics using folds with actual VAR results
+        stationary_fold_var_res = [fold_res for fold_res in fold_var_res if fold_res.is_fully_stationary]
+        #fold_rmse_list = [fr.pred_res.rmse for fr in fold_var_res_list]
+        #fold_stationary_itas_list= [fr.stationary_itas for fr in fold_var_res_list]
+        #fold_train_length_list= [fr.train_length for fr in fold_var_res_list]
+        #fold_test_length_list= [fr.test_length for fr in fold_var_res_list]
+
+        fold_rmse_list = [fr.pred_res.rmse for fr in stationary_fold_var_res]
+        fold_stationary_itas_list= [fr.stationary_itas for fr in stationary_fold_var_res]
+        fold_train_length_list= [fr.train_length for fr in stationary_fold_var_res]
+        fold_test_length_list= [fr.test_length for fr in stationary_fold_var_res]
 
         mean_rmse_folds = np.mean(fold_rmse_list)
         mean_fully_stationary_folds = np.mean(fold_fully_stationary_list)
@@ -76,8 +87,7 @@ class VARModelTuning:
         mean_test_length_folds = np.mean(fold_test_length_list)
         mean_var_res = MeanVARResults(mean_rmse_folds, mean_stationary_itas_folds, mean_fully_stationary_folds, mean_train_length_folds, mean_test_length_folds)
 
-        mean_var_res = MeanVARResults(mean_rmse_folds, mean_stationary_itas_folds, mean_fully_stationary_folds, mean_train_length_folds, mean_test_length_folds)
-        return CountryVARResult(fold_var_res_list, mean_var_res) 
+        return CountryVARResult(stationary_fold_var_res, mean_var_res) 
 
     def calc_mean_from_country_var_res(country_var_res: CountryVARResult) -> MeanVARResults:
         """TODO: Docstring"""
@@ -99,21 +109,30 @@ class VARModelTuning:
         """TODO: Docstring"""
         res_by_fold = []
         for fold in range(folds):
+            fold_amt = 0
             fold_lags = []
             fold_trends = []
             fold_rmses = []
             for cr in country_var_res: 
-                fold_lags.append(cr.folds_res[fold].pred_res.hyper_params.lag)
-                fold_trends.append(cr.folds_res[fold].pred_res.hyper_params.trend)
-                fold_rmses.append(cr.folds_res[fold].pred_res.rmse)
+                for fold_res in cr.folds_res:
+                    if fold_res.fold_ita == fold:
+                        fold_amt += 1
+                        fold_lags.append(fold_res.pred_res.hyper_params.lag)
+                        fold_trends.append(fold_res.pred_res.hyper_params.trend)
+                        fold_rmses.append(fold_res.pred_res.rmse)
+
+            mode_trend = max(fold_trends, key = fold_trends.count) if len(fold_trends) > 0 else "No data"
+            mode_lag = max(fold_lags, key = fold_lags.count) if len(fold_lags) > 0 else "No data"
+            mean_rmse = np.mean(fold_rmses) if len(fold_rmses) > 0 else "No data"
 
             res_by_fold.append(
                 AggregatedFoldVARResults(
-                    fold, 
-                    np.mean(fold_rmses),
+                    fold + 1, 
+                    fold_amt,
+                    mean_rmse,
                     VARHyperParams(
-                        max(fold_trends, key = fold_trends.count),
-                        max(fold_lags, key = fold_lags.count)
+                        mode_trend,
+                        mode_lag
                     )
                 )
             )
@@ -135,7 +154,8 @@ class VARModelTuning:
         country_mean_var = VARModelTuning.calc_mean_from_country_var_res(countrys_res) 
         res_by_fold = VARModelTuning.calculate_fold_var_res(countrys_res, folds)
         
-        return DevStatusResult(dev_status, country_amount, country_mean_var, res_by_fold) 
+        #return DevStatusResult(dev_status, country_amount, country_mean_var, res_by_fold) 
+        return DevStatusResult(dev_status, country_amount, res_by_fold) 
 
     def VAR_pipeline(df_list: list[pd.DataFrame], dependent_name: str, indep_names: list[str], plot_res: bool, export_csv: bool, export_json: bool) -> None:
         """TODO: Docstring"""
@@ -151,16 +171,16 @@ class VARModelTuning:
             dev_stat_var_res = VARModelTuning.get_var_res_by_dev_status(country_amt, dev_status, unique_countrycodes, df, maxlag, dependent_name, plot_res)
             dev_status_var_res_list.append(dev_stat_var_res)
 
-            res_df = pd.concat([res_df, pd.DataFrame([
-                {
-                    "Development status" : dev_status, 
-                    "Country amount": country_amt, 
-                    "Mean RMSE": dev_stat_var_res.mean_var_results.mean_rmse,
-                    "Mean stationary itas" : dev_stat_var_res.mean_var_results.mean_stationary_itas,
-                    "Mean fully stationary": dev_stat_var_res.mean_var_results.mean_fully_stationary,
-                    "Mean train length" : dev_stat_var_res.mean_var_results.mean_train_length,
-                    "Mean test length" : dev_stat_var_res.mean_var_results.mean_test_length
-                    }])], ignore_index=True)
+            #res_df = pd.concat([res_df, pd.DataFrame([
+            #    {
+            #        "Development status" : dev_status, 
+            #        "Country amount": country_amt, 
+            #        "Mean RMSE": dev_stat_var_res.mean_var_results.mean_rmse,
+            #        "Mean stationary itas" : dev_stat_var_res.mean_var_results.mean_stationary_itas,
+            #        "Mean fully stationary": dev_stat_var_res.mean_var_results.mean_fully_stationary,
+            #        "Mean train length" : dev_stat_var_res.mean_var_results.mean_train_length,
+            #        "Mean test length" : dev_stat_var_res.mean_var_results.mean_test_length
+            #        }])], ignore_index=True)
 
         if export_json:
             ExportVARResults.save_json(asdict(VARExportClass(dependent_name, indep_names, dev_status_var_res_list)), "./VAR dev status results.json")
@@ -173,5 +193,7 @@ class VARModelTuning:
 
 if __name__ == "__main__":
     indep_vars = ['ccon', 'rdana', 'cda', 'hc', 'emp', 'pop'] 
-    pwt_by_dev_status_df_list = PWTDevStatusGenerator.subset_pwt_by_dev_stat(DevStatusLevel.ONLY_DEVELOPED, list(indep_vars)) 
+    pwt_by_dev_status_df_list = PWTDevStatusGenerator.subset_pwt_by_dev_stat(DevStatusLevel.MERGED_SUBSET, list(indep_vars)) 
     VARModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, True, True)
+
+    #TODO: Put more stats on fold basis and remove mean results (we are not interested in mean fold basis)

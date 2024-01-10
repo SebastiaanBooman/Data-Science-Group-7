@@ -31,6 +31,7 @@ class FoldVARResults:
 @dataclass
 class AggregatedFoldVARResults:
     fold_ita: int
+    data_amount: int
     mean_rmse: float
     mode_var_params: VARHyperParams
 
@@ -48,10 +49,9 @@ class TrainTestData:
 class DevStatusResult:
     development_status: str
     country_amount: int
-    mean_var_results: MeanVARResults
+    #mean_var_results: MeanVARResults
     fold_results: list[AggregatedFoldVARResults]
     
-#TODO: Better name for this class
 @dataclass
 class VARExportClass:
     dependent_variable: str

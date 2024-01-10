@@ -10,8 +10,21 @@ class MakeStationaryResult:
 
 class Stationary:
     def make_dataframe_stationary(df: pd.DataFrame) -> MakeStationaryResult:
+        """
+        Attempts to make all columns from dataframe stationary by executing one or two differencing iterations. Uses the ad fuller test to verify wether the dataframe is stationary.
+        Each iteration will shrink the dataframe by one due to the differencing. 
+    
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            the dataframe to difference.
+    
+        Returns
+        -------
+        MakeStationaryResult 
+            The result of the attempt to make the dataframe stationary attempt
+        """
 
-        #TODO: What to do with folds which train set contain less than 20 values?, adfuller test does not work for these values
         if len(df) <= 19:
             return MakeStationaryResult(df, False, 0)
 
@@ -22,9 +35,8 @@ class Stationary:
             df = df.diff().dropna()
             diff_pass += 1
 
-            #TODO: How should we go about this?
             # Dataframe smaller than 20 does not work for adfuller test 
-            if diff_pass > 10 or len(df) < 20:
+            if diff_pass > 2 or len(df) < 20:
                 print('Unable to make all series stationary')
                 break
         else:

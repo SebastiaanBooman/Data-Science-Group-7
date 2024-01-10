@@ -58,4 +58,4 @@ class ExportVARResults:
 
     def save_json(obj: object, path: str):
         with open(path, "w") as f:
-            json.dump(export_obj, f)
+            json.dump(obj, f)
