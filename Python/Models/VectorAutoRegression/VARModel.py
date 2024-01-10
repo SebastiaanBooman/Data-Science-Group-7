@@ -22,6 +22,15 @@ class VARModel:
             ic      = None,
             trend   = var_params.trend
         )
+    
+    @staticmethod
+    def fit_base_model(model: VAR):
+        return model.fit(
+            maxlags=8,
+            method='ols',
+            ic=None,
+            trend='c'
+        )
 
     @staticmethod
     def diff_inv(forecast_diff, original, passes):
