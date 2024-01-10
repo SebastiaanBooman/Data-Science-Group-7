@@ -35,7 +35,7 @@ class VARModelTuning:
             df_train_diff = df_train_stationary_res.df
             var_model = VAR(df_train_diff, freq = df_train_diff.index.inferred_freq) 
             #TODO: Call var_param_search with queue length of one, maybe even deprecate ability to get bigger result if not necessary
-            best_fit_res = VARParameterSelection.var_parameter_search(var_model, dependent_name, data.train, df_train_diff, df_train_stationary_res.itas, data.test, maxlag)[0]
+            best_fit_res = VARParameterSelection.var_parameter_search(var_model, dependent_name, data.train, df_train_diff, data.test, df_train_stationary_res.itas, maxlag)[0]
             best_fit_pred_res = best_fit_res[0]
 
             if plot_res:
