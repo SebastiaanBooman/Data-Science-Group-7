@@ -10,8 +10,9 @@ class VARParameterSelection:
             df_train:pd.DataFrame, 
             df_diff:pd.DataFrame, 
             df_test:pd.DataFrame, 
+            stationary_itas: int,
             maxlag = 10, 
-            max_queue_length: int = 10
+            max_queue_length: int = 10,
         ) -> list[tuple[VARPredictionResult, pd.DataFrame]]:
         #TODO: Proper docstring
         #TODO: Want to change the return tuple to a dataclass also? Or this creates too much indirection?
@@ -32,7 +33,7 @@ class VARParameterSelection:
                     trend=trend
                 )
 
-                forecast_res = VARModel.forecast_using_var_model(model_res, df_train, df_test, df_diff, maxlag, target_column)
+                forecast_res = VARModel.forecast_using_var_model(model_res, df_train, df_test, df_diff, maxlag, stationary_itas, target_column)
                 if forecast_res.rmse < best_rmse:
                     print(f"better params found with lag: {lag}, and trend: {trend}")
                     best_rmse = forecast_res.rmse
