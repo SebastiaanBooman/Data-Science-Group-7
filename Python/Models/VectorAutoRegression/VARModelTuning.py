@@ -355,7 +355,7 @@ class BaseModelTuning:
 
 
 if __name__ == "__main__":
-    indep_vars = ['ccon', 'rdana', 'cda', 'hc', 'emp', 'pop'] 
+    indep_vars =  ['rdana', 'rtfpna', 'emp', 'cda']
     pwt_by_dev_status_df_list = PWTDevStatusGenerator.subset_pwt_by_dev_stat(DevStatusLevel.MERGED_SUBSET, list(indep_vars)) 
     #BaseModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, True, True)
-    VARModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, True, True)
+    VARModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, False, True)
