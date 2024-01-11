@@ -11,9 +11,7 @@ class VARImportResults:
         filename = path.replace(".json", "")
         VARImportResults.plot(res, stat_to_plot, title, ylab, xlab_lambda, filename)
     
-    
     def plot(obj: VARExportClass, stat_to_plot: str, title: str, ylab: str, xlab_lambda, filename: str):
-        #folds = ("Adelie", "Chinstrap", "Gentoo")
         folds = [i for i in range(len(obj.dev_status_results[0]["fold_results"]))]
         dev_statuses = [xlab_lambda(ds) for ds in obj.dev_status_results]
 
@@ -23,13 +21,13 @@ class VARImportResults:
             i_fold_rmse = []
             for dev_status_res in obj.dev_status_results:
                 for fold_res in dev_status_res["fold_results"]:
-                    if fold_res["fold_ita"] == fold_i:
-                        i_fold_rmse.append(fold_res[stat_to_plot] if type(fold_res[stat_to_plot]) in (float, int) else 0)
+                    if fold_res["fold_ita"] == (fold_i + 1):
+                        i_fold_rmse.append(round(fold_res[stat_to_plot], 3) if type(fold_res[stat_to_plot]) in (float, int) else 0)
                 
             total_fold_res[f"Fold {fold_i + 1}"] = i_fold_rmse #[dev_status["fold_results"] for dev_status in obj.dev_status_results if dev_status["fold_results"]["fold_ita"] == i]
 
         x = np.arange(len(dev_statuses))  # the label locations
-        width = 0.25  # the width of the bars
+        width = 0.20  # the width of the bars
         multiplier = 0
 
         fig, ax = plt.subplots(layout='constrained', figsize=(10,6))
@@ -55,5 +53,5 @@ if __name__ == "__main__":
     VARImportResults.load_and_plot_var_res("./VAR dev status results.json", "mean_rmse", 'VAR RMSE by fold per development status', "RMSE", lambda x: x["development_status"])
     VARImportResults.load_and_plot_var_res("./VAR dev status results.json", "data_amount", 'VAR country amount by fold per development status', "Data amount", lambda x: f"{x['development_status']}\n(total country amount: {x['country_amount']})")
 
-    VARImportResults.load_and_plot_var_res("./Baseline_VAR dev status results.json", "mean_rmse", 'VAR RMSE by fold per development status', "RMSE", lambda x: x["development_status"])
-    VARImportResults.load_and_plot_var_res("./Baseline_VAR dev status results.json", "data_amount", 'VAR country amount by fold per development status', "Data amount", lambda x: f"{x['development_status']}\n(total country amount: {x['country_amount']})")
+    #VARImportResults.load_and_plot_var_res("./Baseline_VAR dev status results.json", "mean_rmse", 'VAR RMSE by fold per development status', "RMSE", lambda x: x["development_status"])
+    #VARImportResults.load_and_plot_var_res("./Baseline_VAR dev status results.json", "data_amount", 'VAR country amount by fold per development status', "Data amount", lambda x: f"{x['development_status']}\n(total country amount: {x['country_amount']})")
