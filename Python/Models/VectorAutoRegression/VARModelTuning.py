@@ -25,7 +25,7 @@ class VARModelTuning:
                         test = df.take(test_index)))
         return train_test_list
 
-    def get_fold_var_res(data: TrainTestData, maxlag: int, countrycode: str, dependent_name: str, fold_ita: int, plot_res: bool) -> FoldVARResults:
+    def get_fold_var_res(data: TrainTestData, maxlag: int, countrycode: str, dependent_name: str, fold_ita: int, plot_res: bool, dev_status: str) -> FoldVARResults:
         """Using a train test split `data` creates a VAR model and calculates FoldVARResults"""
 
         df_train_copy = data.train.copy()
@@ -39,7 +39,7 @@ class VARModelTuning:
             best_fit_res = VARParameterSelection.var_parameter_search(var_model, dependent_name, data.train, df_train_diff, data.test, df_train_stationary_res.itas, maxlag)[0]
             best_fit_pred_res = best_fit_res[0]
 
-            if plot_res:
+            if plot_res and fold_ita == 4:#dev_status in["Developing region"]: #["Developed region"]:
                 ExportVARResults.plot_country_results(
                     df_train=data.train, 
                     df_test=data.test,
@@ -60,12 +60,12 @@ class VARModelTuning:
             best_fit_pred_res
         )
 
-    def get_var_res_by_country(ctry_df: pd.DataFrame, maxlag: int, countrycode: str, dependent_name: str, plot_res: bool, folds: int) -> CountryVARResult:
+    def get_var_res_by_country(ctry_df: pd.DataFrame, maxlag: int, countrycode: str, dependent_name: str, plot_res: bool, folds: int, dev_status) -> CountryVARResult:
         """TODO: Docstring Using KFold cross validation"""
 
         train_test_data = VARModelTuning.create_train_test_data(ctry_df, folds)
 
-        fold_var_res = [VARModelTuning.get_fold_var_res(data, maxlag, countrycode, dependent_name, i + 1, plot_res) for i, data in enumerate(train_test_data)]
+        fold_var_res = [VARModelTuning.get_fold_var_res(data, maxlag, countrycode, dependent_name, i, plot_res, dev_status) for i, data in enumerate(train_test_data)]
 
         fold_fully_stationary_list = [fr.is_fully_stationary for fr in fold_var_res]
 
@@ -123,7 +123,7 @@ class VARModelTuning:
 
             res_by_fold.append(
                 AggregatedFoldVARResults(
-                    fold,
+                    (fold + 1),
                     fold_amt,
                     mean_rmse,
                     VARHyperParams(
@@ -134,18 +134,18 @@ class VARModelTuning:
             )
         return res_by_fold
 
-    def extract_country_and_generate_var_res(countrycode: str, df: pd.DataFrame, maxlag: int, dependent_name: str, plot_res: bool, folds: int) -> CountryVARResult:
+    def extract_country_and_generate_var_res(countrycode: str, df: pd.DataFrame, maxlag: int, dependent_name: str, plot_res: bool, folds: int, dev_status) -> CountryVARResult:
         """Given a countrycode, dataframe containing multiple country data and var parameters creates CountryVARResult"""
         ctry_df = df.loc[df['countrycode'] == countrycode]
         ctry_df = ctry_df.drop(columns=["countrycode"])
 
-        var_res_by_country = VARModelTuning.get_var_res_by_country(ctry_df, maxlag, countrycode, dependent_name, plot_res, folds)
+        var_res_by_country = VARModelTuning.get_var_res_by_country(ctry_df, maxlag, countrycode, dependent_name, plot_res, folds, dev_status)
         return var_res_by_country
 
     def get_var_res_by_dev_status(country_amount: int, dev_status: str, unique_countrycodes: list[str], df: pd.DataFrame, maxlag: int, dependent_name: str, plot_res: bool) -> DevStatusResult:
         """TODO: Docstring"""
         folds = 4
-        countrys_res = [VARModelTuning.extract_country_and_generate_var_res(code, df, maxlag, dependent_name, plot_res, folds) for code in unique_countrycodes]
+        countrys_res = [VARModelTuning.extract_country_and_generate_var_res(code, df, maxlag, dependent_name, plot_res, folds, dev_status) for code in unique_countrycodes]
 
         res_by_fold = VARModelTuning.calculate_fold_var_res(countrys_res, folds)
         
@@ -357,6 +357,5 @@ class BaseModelTuning:
 if __name__ == "__main__":
     indep_vars = ['ccon', 'rdana', 'cda', 'hc', 'emp', 'pop'] 
     pwt_by_dev_status_df_list = PWTDevStatusGenerator.subset_pwt_by_dev_stat(DevStatusLevel.MERGED_SUBSET, list(indep_vars)) 
-    BaseModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, True, True)
+    #BaseModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, True, True)
     VARModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, True, True)
-    
