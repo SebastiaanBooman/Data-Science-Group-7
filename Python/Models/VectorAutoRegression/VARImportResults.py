@@ -8,10 +8,11 @@ class VARImportResults:
         res = ExportVARResults.load(path)
 
         res = VARExportClass(**res)
-        VARImportResults.plot(res, stat_to_plot, title, ylab, xlab_lambda)
+        filename = path.replace(".json", "")
+        VARImportResults.plot(res, stat_to_plot, title, ylab, xlab_lambda, filename)
     
     
-    def plot(obj: VARExportClass, stat_to_plot: str, title: str, ylab: str, xlab_lambda):
+    def plot(obj: VARExportClass, stat_to_plot: str, title: str, ylab: str, xlab_lambda, filename: str):
         #folds = ("Adelie", "Chinstrap", "Gentoo")
         folds = [i for i in range(len(obj.dev_status_results[0]["fold_results"]))]
         dev_statuses = [xlab_lambda(ds) for ds in obj.dev_status_results]
@@ -47,8 +48,12 @@ class VARImportResults:
         ax.legend(loc='upper left', ncols=1)
         #ax.set_ylim(0, 250)
         #plt.show()
-        plt.savefig(f"{stat_to_plot}.png", dpi=150)
+
+        plt.savefig(f"{filename} + {stat_to_plot}.png", dpi=150)
 
 if __name__ == "__main__":
     VARImportResults.load_and_plot_var_res("./VAR dev status results.json", "mean_rmse", 'VAR RMSE by fold per development status', "RMSE", lambda x: x["development_status"])
     VARImportResults.load_and_plot_var_res("./VAR dev status results.json", "data_amount", 'VAR country amount by fold per development status', "Data amount", lambda x: f"{x['development_status']}\n(total country amount: {x['country_amount']})")
+
+    VARImportResults.load_and_plot_var_res("./Baseline_VAR dev status results.json", "mean_rmse", 'VAR RMSE by fold per development status', "RMSE", lambda x: x["development_status"])
+    VARImportResults.load_and_plot_var_res("./Baseline_VAR dev status results.json", "data_amount", 'VAR country amount by fold per development status', "Data amount", lambda x: f"{x['development_status']}\n(total country amount: {x['country_amount']})")

@@ -7,6 +7,8 @@ out
 .Ruserdata
 *.png
 *.exe
+*.json
+*.csv
 *.chromedriver
 ~$*
 *__pycache__/
