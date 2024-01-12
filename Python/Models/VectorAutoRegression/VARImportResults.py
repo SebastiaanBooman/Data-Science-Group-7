@@ -53,5 +53,5 @@ if __name__ == "__main__":
     VARImportResults.load_and_plot_var_res("./VAR dev status results.json", "mean_rmse", 'VAR RMSE by fold per development status', "RMSE", lambda x: x["development_status"])
     VARImportResults.load_and_plot_var_res("./VAR dev status results.json", "data_amount", 'VAR country amount by fold per development status', "Data amount", lambda x: f"{x['development_status']}\n(total country amount: {x['country_amount']})")
 
-    #VARImportResults.load_and_plot_var_res("./Baseline_VAR dev status results.json", "mean_rmse", 'VAR RMSE by fold per development status', "RMSE", lambda x: x["development_status"])
-    #VARImportResults.load_and_plot_var_res("./Baseline_VAR dev status results.json", "data_amount", 'VAR country amount by fold per development status', "Data amount", lambda x: f"{x['development_status']}\n(total country amount: {x['country_amount']})")
+    VARImportResults.load_and_plot_var_res("./Baseline_VAR dev status results.json", "mean_rmse", 'VAR RMSE by fold per development status', "RMSE", lambda x: x["development_status"])
+    VARImportResults.load_and_plot_var_res("./Baseline_VAR dev status results.json", "data_amount", 'VAR country amount by fold per development status', "Data amount", lambda x: f"{x['development_status']}\n(total country amount: {x['country_amount']})")
