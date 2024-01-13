@@ -208,12 +208,12 @@ class BaseModelTuning:
             df_train_diff = df_train_stationary_res.df
             var_model = VAR(df_train_diff, freq = df_train_diff.index.inferred_freq) 
             #TODO: Call var_param_search with queue length of one, maybe even deprecate ability to get bigger result if not necessary
-            baseline_model = VARModel.fit_base_model(var_model)
+            baseline_model = VARModel.fit_base_model(var_model, maxlag)
             baseline_res = VARModel.forecast_using_var_model(var_model=baseline_model,
                                               undiff_train_data=data.train,
                                               undiff_test_data=data.test,
                                               diff_train_df=df_train_diff,
-                                              maxlag=8,
+                                              maxlag=maxlag,
                                               stationary_itas=df_train_stationary_res.itas,
                                               dependent_name=dependent_name)
 
@@ -235,7 +235,7 @@ class BaseModelTuning:
             df_train_stationary_res.itas, 
             len(data.train), 
             len(data.test),
-            VARPredictionResult(baseline_res.rmse, VARHyperParams('c', 8))
+            VARPredictionResult(baseline_res.rmse, VARHyperParams('c', maxlag))
         )
 
     def get_var_res_by_country(ctry_df: pd.DataFrame, maxlag: int, countrycode: str, dependent_name: str, plot_res: bool, folds: int) -> CountryVARResult:
@@ -331,7 +331,7 @@ class BaseModelTuning:
 
     def VAR_pipeline(df_list: list[pd.DataFrame], dependent_name: str, indep_names: list[str], plot_res: bool, export_csv: bool, export_json: bool) -> None:
         """TODO: Docstring"""
-        maxlag = 8
+        maxlag = 7
         res_df: pd.DataFrame = pd.DataFrame(columns = ['Development status', "Country amount", 'Mean RMSE', "Mean stationary itas", "Mean fully stationary", "Mean train length", "Mean test length"]) 
         dev_status_var_res_list = []
         for df in df_list:

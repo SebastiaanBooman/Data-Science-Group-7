@@ -24,9 +24,9 @@ class VARModel:
         )
     
     @staticmethod
-    def fit_base_model(model: VAR):
+    def fit_base_model(model: VAR, lag:int):
         return model.fit(
-            maxlags=8,
+            maxlags=lag,
             method='ols',
             ic=None,
             trend='c'
