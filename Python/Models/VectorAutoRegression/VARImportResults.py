@@ -44,7 +44,7 @@ class VARImportResults:
         for attribute, measurement in total_fold_res.items():
             offset = width * multiplier
             if log:
-                measurement_log = map(lambda x: math.log10(x+1), measurement)
+                measurement_log = map(lambda x: round(math.log10(x+1), 3), measurement)
                 measurement_log = list(measurement_log)
                 rects = ax.bar(x + offset, measurement_log, width, label=attribute)
             else:
@@ -61,7 +61,7 @@ class VARImportResults:
         ax.set_title(title, weight='bold')
         ax.set_xticks(x + width, dev_statuses)
         ax.legend(loc='upper left', ncols=1)
-        #ax.set_ylim(0, 250)
+        ax.set_ylim(0, 0.2)
         #plt.show()
 
         plt.savefig(f"{filename} + {stat_to_plot}_percentage.png", dpi=150)
