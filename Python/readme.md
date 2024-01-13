@@ -6,7 +6,11 @@ Files within the Python codebase have been written for the final milestone withi
 ### Dependencies
 
 * Python 3.12
-* Module dependencies can be found in TODO
+* Module dependencies can be found in [requirements.txt](requirements.txt)
+
+```
+pip install requirements.txt
+```
 
 ### Milestone 4: Data mining tool utilization
 
