@@ -7,9 +7,10 @@ import math
 class VARImportResults:
     def load_and_plot_var_res(path: str, stat_to_plot: str, title: str, ylab: str, xlab_lambda, percentage:bool, log:bool):
         res = ExportVARResults.load(path)
-
         res = VARExportClass(**res)
+
         filename = path.replace(".json", "")
+
         VARImportResults.plot(res, stat_to_plot, title, ylab, xlab_lambda, percentage, filename, log)
     
     def plot(obj: VARExportClass, stat_to_plot: str, title: str, ylab: str, xlab_lambda, percentage, filename: str, log:bool):
@@ -17,7 +18,6 @@ class VARImportResults:
         dev_statuses = [xlab_lambda(ds) for ds in obj.dev_status_results]
 
         total_fold_res = {}
-        
         for fold_i in range(len(folds)):
             i_fold_res = []
             for dev_status_res in obj.dev_status_results:
@@ -64,14 +64,19 @@ class VARImportResults:
         ax.set_ylim(0, 0.2)
         #plt.show()
 
-        plt.savefig(f"{filename} + {stat_to_plot}_percentage.png", dpi=150)
+        if percentage:
+            export_path = f"{filename} + {stat_to_plot}_percentage.png"
+        else:
+            export_path = f"{filename} + {stat_to_plot}.png"
+            
+        plt.savefig(export_path, dpi=150)
 
 if __name__ == "__main__":
     log:bool = True
     percentage:bool = True
 
-    # Parameter tuning results export
-    """
+    ## Parameter tuning results export
+    # Mean RMSE per fold
     VARImportResults.load_and_plot_var_res(
         "./VAR dev status results.json",
         "mean_rmse",
@@ -80,7 +85,8 @@ if __name__ == "__main__":
         lambda x: x["development_status"], 
         False,
         log
-    )"""
+    )
+    # Country amounts per fold 
     VARImportResults.load_and_plot_var_res(
         "./VAR dev status results.json",
         "data_amount",
@@ -91,10 +97,8 @@ if __name__ == "__main__":
         False
     )
 
-"""
-
-
-    # Baseline model results export
+    ## Baseline model results export
+    # Mean RMSE per fold
     VARImportResults.load_and_plot_var_res(
         "./Baseline_VAR dev status results.json",
         "mean_rmse",
@@ -104,6 +108,8 @@ if __name__ == "__main__":
         False,
         log
     )
+    
+    # Country amounts per fold 
     VARImportResults.load_and_plot_var_res(
         "./Baseline_VAR dev status results.json",
         "data_amount",
@@ -113,4 +119,3 @@ if __name__ == "__main__":
         percentage,
         False
     )
-"""
