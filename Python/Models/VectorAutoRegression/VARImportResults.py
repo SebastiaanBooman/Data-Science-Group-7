@@ -13,10 +13,7 @@ class VARImportResults:
 
         VARImportResults.plot(res, stat_to_plot, title, ylab, xlab_lambda, percentage, filename, log)
     
-    def plot(obj: VARExportClass, stat_to_plot: str, title: str, ylab: str, xlab_lambda, percentage, filename: str, log:bool):
-        folds = [i for i in range(len(obj.dev_status_results[0]["fold_results"]))]
-        dev_statuses = [xlab_lambda(ds) for ds in obj.dev_status_results]
-
+    def create_results_per_fold(folds: list, obj: VARExportClass, stat_to_plot: str, percentage: bool) -> {}:
         total_fold_res = {}
         for fold_i in range(len(folds)):
             i_fold_res = []
@@ -34,6 +31,13 @@ class VARImportResults:
                             )
                 
             total_fold_res[f"Fold {fold_i + 1}"] = i_fold_res 
+        return total_fold_res
+
+    def plot(obj: VARExportClass, stat_to_plot: str, title: str, ylab: str, xlab_lambda, percentage, filename: str, log:bool):
+        folds = [i for i in range(len(obj.dev_status_results[0]["fold_results"]))]
+        dev_statuses = [xlab_lambda(ds) for ds in obj.dev_status_results]
+
+        total_fold_res = VARImportResults.create_results_per_fold(folds, obj, stat_to_plot, percentage) 
 
         x = np.arange(len(dev_statuses))  # the label locations
         width = 0.20  # the width of the bars
