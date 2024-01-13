@@ -145,7 +145,7 @@ class VARModelTuning:
     def get_var_res_by_dev_status(country_amount: int, dev_status: str, unique_countrycodes: list[str], df: pd.DataFrame, maxlag: int, dependent_name: str, plot_res: bool) -> DevStatusResult:
         """TODO: Docstring"""
         folds = 4
-        countrys_res = [VARModelTuning.extract_country_and_generate_var_res(code, df, maxlag, dependent_name, plot_res, folds, dev_status) for code in unique_countrycodes]
+        countrys_res = [VARModelTuning.extract_country_and_generate_var_res(code, df, maxlag, dependent_name, plot_res, folds) for code in unique_countrycodes]
 
         res_by_fold = VARModelTuning.calculate_fold_var_res(countrys_res, folds)
         
@@ -185,7 +185,8 @@ class VARModelTuning:
         if export_csv:
             res_df.to_csv("./VAR dev status results.csv", index=False)
 
-class BaseModelTuning:
+class BasemodelTuning:
+    """Contains functionality to tune and compare different VAR countries using hyper parameter selection on development status, country, and fold basis"""
     def create_train_test_data(df: pd.DataFrame, folds: int)-> list[TrainTestData]: 
         """Takes data and splits it up in `folds` folds for training and testing sets"""
         kf = KFold(n_splits=folds, random_state=None, shuffle= False)
@@ -206,26 +207,23 @@ class BaseModelTuning:
         if df_train_stationary_res.fully_stationary:
             df_train_diff = df_train_stationary_res.df
             var_model = VAR(df_train_diff, freq = df_train_diff.index.inferred_freq) 
-            
-            baseline_model = VARModel.fit_base_model(model=var_model)
-            baseline_res = VARModel.forecast_using_var_model(var_model=baseline_model,
-                                                            undiff_train_data=data.train,
-                                                            undiff_test_data=data.test,
-                                                            diff_train_df=df_train_diff,
-                                                            maxlag=maxlag,
-                                                            stationary_itas=df_train_stationary_res.itas,
-                                                            dependent_name=dependent_name
-                                                            )
+            #TODO: Call var_param_search with queue length of one, maybe even deprecate ability to get bigger result if not necessary
+            Baseline_model = VARModel.fit_base_model(var_model)
+            VARModel.forecast_using_var_model(var_model=Baseline_model,
+                                              undiff_train_data=data.train)
 
-            if plot_res:
+            best_fit_res = VARParameterSelection.var_parameter_search(var_model, dependent_name, data.train, df_train_diff, data.test, df_train_stationary_res.itas, maxlag)[0]
+            best_fit_pred_res = best_fit_res[0]
+
+            if plot_res and fold_ita == 4:#dev_status in["Developing region"]: #["Developed region"]:
                 ExportVARResults.plot_country_results(
                     df_train=data.train, 
                     df_test=data.test,
                     train_length=len(data.train),
                     test_length=len(data.test),
-                    df_forecast=baseline_res.pred,
+                    df_forecast=best_fit_res[1],
                     gdp=dependent_name,
-                    rmse=baseline_res.rmse,
+                    rmse=best_fit_pred_res.rmse,
                     country_name=countrycode
                 )
 
@@ -233,17 +231,17 @@ class BaseModelTuning:
             fold_ita,
             df_train_stationary_res.fully_stationary, 
             df_train_stationary_res.itas, 
-            len(data.train),
+            len(data.train), 
             len(data.test),
-            VARPredictionResult(baseline_res.rmse, VARHyperParams('c', 8))
+            best_fit_pred_res
         )
 
     def get_var_res_by_country(ctry_df: pd.DataFrame, maxlag: int, countrycode: str, dependent_name: str, plot_res: bool, folds: int) -> CountryVARResult:
         """TODO: Docstring Using KFold cross validation"""
 
-        train_test_data = BaseModelTuning.create_train_test_data(ctry_df, folds)
+        train_test_data = VARModelTuning.create_train_test_data(ctry_df, folds)
 
-        fold_var_res = [BaseModelTuning.get_fold_var_res(data, maxlag, countrycode, dependent_name, i, plot_res) for i, data in enumerate(train_test_data)]
+        fold_var_res = [VARModelTuning.get_fold_var_res(data, maxlag, countrycode, dependent_name, i, plot_res) for i, data in enumerate(train_test_data)]
 
         fold_fully_stationary_list = [fr.is_fully_stationary for fr in fold_var_res]
 
@@ -317,20 +315,20 @@ class BaseModelTuning:
         ctry_df = df.loc[df['countrycode'] == countrycode]
         ctry_df = ctry_df.drop(columns=["countrycode"])
 
-        var_res_by_country = BaseModelTuning.get_var_res_by_country(ctry_df, maxlag, countrycode, dependent_name, plot_res, folds)
+        var_res_by_country = VARModelTuning.get_var_res_by_country(ctry_df, maxlag, countrycode, dependent_name, plot_res, folds)
         return var_res_by_country
 
     def get_var_res_by_dev_status(country_amount: int, dev_status: str, unique_countrycodes: list[str], df: pd.DataFrame, maxlag: int, dependent_name: str, plot_res: bool) -> DevStatusResult:
         """TODO: Docstring"""
         folds = 4
-        countrys_res = [BaseModelTuning.extract_country_and_generate_var_res(code, df, maxlag, dependent_name, plot_res, folds) for code in unique_countrycodes]
+        countrys_res = [VARModelTuning.extract_country_and_generate_var_res(code, df, maxlag, dependent_name, plot_res, folds) for code in unique_countrycodes]
 
-        res_by_fold = BaseModelTuning.calculate_fold_var_res(countrys_res, folds)
+        res_by_fold = VARModelTuning.calculate_fold_var_res(countrys_res, folds)
         
         return DevStatusResult(dev_status, country_amount, res_by_fold) 
 
     def VAR_pipeline(df_list: list[pd.DataFrame], dependent_name: str, indep_names: list[str], plot_res: bool, export_csv: bool, export_json: bool) -> None:
-        '''The start of the VAR forecasting process'''
+        """TODO: Docstring"""
         maxlag = 8
         res_df: pd.DataFrame = pd.DataFrame(columns = ['Development status', "Country amount", 'Mean RMSE', "Mean stationary itas", "Mean fully stationary", "Mean train length", "Mean test length"]) 
         dev_status_var_res_list = []
@@ -340,22 +338,35 @@ class BaseModelTuning:
             unique_countrycodes = df["countrycode"].unique()
             country_amt = len(unique_countrycodes)
             
-            dev_stat_var_res = BaseModelTuning.get_var_res_by_dev_status(country_amt, dev_status, unique_countrycodes, df, maxlag, dependent_name, plot_res)
+            dev_stat_var_res = VARModelTuning.get_var_res_by_dev_status(country_amt, dev_status, unique_countrycodes, df, maxlag, dependent_name, plot_res)
             dev_status_var_res_list.append(dev_stat_var_res)
 
+            #res_df = pd.concat([res_df, pd.DataFrame([
+            #    {
+            #        "Development status" : dev_status, 
+            #        "Country amount": country_amt, 
+            #        "Mean RMSE": dev_stat_var_res.mean_var_results.mean_rmse,
+            #        "Mean stationary itas" : dev_stat_var_res.mean_var_results.mean_stationary_itas,
+            #        "Mean fully stationary": dev_stat_var_res.mean_var_results.mean_fully_stationary,
+            #        "Mean train length" : dev_stat_var_res.mean_var_results.mean_train_length,
+            #        "Mean test length" : dev_stat_var_res.mean_var_results.mean_test_length
+            #        }])], ignore_index=True)
 
         if export_json:
-            ExportVARResults.save_json(asdict(VARExportClass(dependent_name, indep_names, dev_status_var_res_list)), "./Baseline_VAR dev status results.json")
+            ExportVARResults.save_json(asdict(VARExportClass(dependent_name, indep_names, dev_status_var_res_list)), "./VAR dev status results.json")
 
         if plot_res:
             ExportVARResults.plot_dev_status_var_results(res_df)
         
         if export_csv:
-            res_df.to_csv("./Baseline_VAR dev status results.csv", index=False)
+            res_df.to_csv("./VAR dev status results.csv", index=False)
 
 
 if __name__ == "__main__":
     indep_vars =  ['rdana', 'rtfpna', 'emp', 'cda']
-    pwt_by_dev_status_df_list = PWTDevStatusGenerator.subset_pwt_by_dev_stat(DevStatusLevel.MERGED_SUBSET, list(indep_vars)) 
-    BaseModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, True, True)
-    #VARModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, True, True)
+    pwt_by_dev_status_df_list = PWTDevStatusGenerator.subset_pwt_by_dev_stat(DevStatusLevel.MERGED_SUBSET, list(indep_vars))
+    #VARModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, False, True)
+    
+    Baseline_pwt_by_dev_status_df_list = PWTDevStatusGenerator.subset_pwt_by_dev_stat(DevStatusLevel.MERGED_SUBSET, list(indep_vars))
+    BaseModelTuning.VAR_pipeline(Baseline_pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, False, True)
+    
