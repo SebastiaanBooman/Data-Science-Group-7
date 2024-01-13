@@ -150,7 +150,7 @@ def create_pwt_dev_status_subset(dev_statuses: list[str], dev_status_df: pd.Data
     return dev_stat_df_list
 
 def init_data():
-    pwt = pd.read_excel('../../Data/pwt1001.xlsx',
+    pwt = pd.read_excel('../../../Data/pwt1001.xlsx',
                     sheet_name = 'Data',
                     parse_dates = ['year'],
                     index_col = 3)
@@ -158,7 +158,7 @@ def init_data():
     pwt = pwt[[gdp, 'ccon', 'rdana', "countrycode"]]
     pwt = pwt.dropna()
 
-    country_dev_status_df = pd.read_csv('../../Data/dev_status.csv')
+    country_dev_status_df = pd.read_csv('../../../Data/dev_status.csv')
     unique_eco_statuses = country_dev_status_df["economy"].unique()
 
     pwt_by_dev_status_df_list = create_pwt_dev_status_subset(unique_eco_statuses, country_dev_status_df, pwt)
