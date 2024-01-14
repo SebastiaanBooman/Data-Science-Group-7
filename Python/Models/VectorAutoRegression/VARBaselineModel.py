@@ -124,7 +124,7 @@ def plot_dev_status_var_results(df):
 
 def VAR_pipeline(df_list: list[pd.DataFrame]):
     #for country data in list make var model, after which take the mean rmse as a result for VAR model for that dev status
-    maxlag = 8 # FIXME: what is the right max lag???
+    maxlag = 7 # FIXME: what is the right max lag???
     res_df: pd.DataFrame = pd.DataFrame(columns = ['Development status', "Country amount", 'Mean RMSE'])     #TODO: want to use save more columns for each test
     for df in df_list:
         dev_status = df["economy"][0]
