@@ -5,13 +5,13 @@ import matplotlib.pyplot as plt
 import math
 
 class VARImportResults:
-    def load_and_plot_var_res(path: str, stat_to_plot: str, title: str, ylab: str, xlab_lambda, percentage:bool, log:bool):
+    def load_and_plot_var_res(path: str, stat_to_plot: str, title: str, ylab: str, xlab_lambda, ylim:float, percentage:bool = False, log:bool = False):
         res = ExportVARResults.load(path)
         res = VARExportClass(**res)
 
         filename = path.replace(".json", "")
 
-        VARImportResults.plot(res, stat_to_plot, title, ylab, xlab_lambda, percentage, filename, log)
+        VARImportResults.plot(res, stat_to_plot, title, ylab, xlab_lambda, ylim, percentage, filename, log)
     
     def create_results_per_fold(folds: list, obj: VARExportClass, stat_to_plot: str, percentage: bool) -> {}:
         total_fold_res = {}
@@ -33,7 +33,7 @@ class VARImportResults:
             total_fold_res[f"Fold {fold_i + 1}"] = i_fold_res 
         return total_fold_res
 
-    def plot(obj: VARExportClass, stat_to_plot: str, title: str, ylab: str, xlab_lambda, percentage, filename: str, log:bool):
+    def plot(obj: VARExportClass, stat_to_plot: str, title: str, ylab: str, xlab_lambda, ylim:float, percentage:bool, filename: str, log:bool):
         folds = [i for i in range(len(obj.dev_status_results[0]["fold_results"]))]
         dev_statuses = [xlab_lambda(ds) for ds in obj.dev_status_results]
 
@@ -65,7 +65,7 @@ class VARImportResults:
         ax.set_title(title, weight='bold')
         ax.set_xticks(x + width, dev_statuses)
         ax.legend(loc='upper left', ncols=1)
-        ax.set_ylim(0, 0.2)
+        ax.set_ylim(0, ylim)
         #plt.show()
 
         if percentage:
@@ -82,44 +82,44 @@ if __name__ == "__main__":
     ## Parameter tuning results export
     # Mean RMSE per fold
     VARImportResults.load_and_plot_var_res(
-        "./VAR dev status results.json",
-        "mean_rmse",
-        'VAR RMSE by fold per development status',
-        "RMSE",
-        lambda x: x["development_status"], 
-        False,
-        log
+        path="./VAR dev status results.json",
+        stat_to_plot="mean_rmse",
+        title='VAR RMSE by fold per development status',
+        ylab="RMSE",
+        xlab_lambda=lambda x: x["development_status"], 
+        ylim=0.2,
+        log=log
     )
     # Country amounts per fold 
     VARImportResults.load_and_plot_var_res(
-        "./VAR dev status results.json",
-        "data_amount",
-        '% VAR country amount by fold per development status',
-        "% Data amount",
-        lambda x: f"{x['development_status']}\n(total country amount: {x['country_amount']})", 
-        percentage,
-        False
+        path="./VAR dev status results.json",
+        stat_to_plot="data_amount",
+        title='% VAR country amount by fold per development status',
+        ylab="% Data amount",
+        xlab_lambda=lambda x: f"{x['development_status']}\n(total country amount: {x['country_amount']})",
+        ylim=100,
+        percentage=percentage,
     )
 
     ## Baseline model results export
     # Mean RMSE per fold
     VARImportResults.load_and_plot_var_res(
-        "./Baseline_VAR dev status results.json",
-        "mean_rmse",
-        'VAR RMSE by fold per development status',
-        "RMSE",
-        lambda x: x["development_status"], 
-        False,
-        log
+        path="./Baseline_VAR dev status results.json",
+        stat_to_plot="mean_rmse",
+        title='VAR RMSE by fold per development status',
+        ylab="RMSE",
+        xlab_lambda=lambda x: x["development_status"],
+        ylim=3,
+        log=log
     )
     
     # Country amounts per fold 
     VARImportResults.load_and_plot_var_res(
-        "./Baseline_VAR dev status results.json",
-        "data_amount",
-        'VAR country amount by fold per development status',
-        "Data amount",
-        lambda x: f"{x['development_status']}\n(total country amount: {x['country_amount']})",
-        percentage,
-        False
+        path="./Baseline_VAR dev status results.json",
+        stat_to_plot="data_amount",
+        title='VAR country amount by fold per development status',
+        ylab="Data amount",
+        xlab_lambda=lambda x: f"{x['development_status']}\n(total country amount: {x['country_amount']})",
+        ylim=100,
+        percentage=percentage,
     )
