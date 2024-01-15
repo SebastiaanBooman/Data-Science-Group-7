@@ -37,10 +37,10 @@ if __name__ == "__main__":
     #res_list.append(ResultByFoldDevStatus.open_results_get_fold_by_dev_status(f"{debug_path}/Developed_VAR dev status results.json", fold,  "Developed region"))
     #res_list.append(ResultByFoldDevStatus.open_results_get_fold_by_dev_status(f"{debug_path}/Developing_VAR dev status results.json", fold,  "Developing region"))
 
-    res_list.append(ResultByFoldDevStatus.open_results_get_fold_by_dev_status("./Developed_VAR dev status results.json", fold,  "Developed region"))
     res_list.append(ResultByFoldDevStatus.open_results_get_fold_by_dev_status("./Developing_VAR dev status results.json", fold,  "Developing region"))
-    res_list.append(ResultByFoldDevStatus.open_results_get_fold_by_dev_status("./Emerging_VAR dev status results.json", fold,  "Emerging region"))
     res_list.append(ResultByFoldDevStatus.open_results_get_fold_by_dev_status("./Least developed_VAR dev status results.json", fold,  "Least developed region"))
+    res_list.append(ResultByFoldDevStatus.open_results_get_fold_by_dev_status("./Emerging_VAR dev status results.json", fold,  "Emerging region"))
+    res_list.append(ResultByFoldDevStatus.open_results_get_fold_by_dev_status("./Developed_VAR dev status results.json", fold,  "Developed region"))
     ResultByFoldDevStatus.plot_res_list(res_list, "./test_plot.png")
 
 
