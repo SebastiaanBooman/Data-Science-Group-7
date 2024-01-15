@@ -22,7 +22,7 @@ class ExportVARResults:
         plt.show()
         #plt.clf()
 
-    def plot_simple_bar(x_data: list, y_data: list, x_label: str, y_label: str, title: str):
+    def plot_simple_bar(x_data: list, y_data: list, x_label: str, y_label: str, title: str, export_path: str):
         fig = plt.figure(figsize = (10, 5))
 
         plt.bar(x_data, y_data, color ='maroon', 
@@ -31,7 +31,8 @@ class ExportVARResults:
         plt.xlabel(x_label)
         plt.ylabel(y_label)
         plt.title(title)
-        plt.show()
+        #plt.show()
+        plt.savefig(export_path, dpi=150)
     
     def plot_dev_status_var_results(df) -> None:
         """TODO: Docstring"""

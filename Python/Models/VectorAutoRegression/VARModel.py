@@ -24,12 +24,12 @@ class VARModel:
         )
     
     @staticmethod
-    def fit_base_model(model: VAR, lag:int):
+    def fit_base_model(model: VAR, lag:int, trend_yeet:str):
         return model.fit(
             maxlags=lag,
             method='ols',
             ic=None,
-            trend='c'
+            trend=trend_yeet
         )
 
     @staticmethod

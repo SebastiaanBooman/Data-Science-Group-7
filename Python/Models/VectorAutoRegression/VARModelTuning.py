@@ -197,7 +197,7 @@ class BaseModelTuning:
                         test = df.take(test_index)))
         return train_test_list
 
-    def get_fold_var_res(data: TrainTestData, maxlag: int, countrycode: str, dependent_name: str, fold_ita: int, plot_res: bool) -> FoldVARResults:
+    def get_fold_var_res(data: TrainTestData, maxlag: int, trend: str, countrycode: str, dependent_name: str, fold_ita: int, plot_res: bool) -> FoldVARResults:
         """Using a train test split `data` creates a VAR model and calculates FoldVARResults"""
 
         df_train_copy = data.train.copy()
@@ -208,7 +208,7 @@ class BaseModelTuning:
             df_train_diff = df_train_stationary_res.df
             var_model = VAR(df_train_diff, freq = df_train_diff.index.inferred_freq) 
             #TODO: Call var_param_search with queue length of one, maybe even deprecate ability to get bigger result if not necessary
-            baseline_model = VARModel.fit_base_model(var_model, maxlag)
+            baseline_model = VARModel.fit_base_model(var_model, maxlag, trend)
             baseline_res = VARModel.forecast_using_var_model(var_model=baseline_model,
                                               undiff_train_data=data.train,
                                               undiff_test_data=data.test,
@@ -235,15 +235,15 @@ class BaseModelTuning:
             df_train_stationary_res.itas, 
             len(data.train), 
             len(data.test),
-            VARPredictionResult(baseline_res.rmse, VARHyperParams('c', maxlag))
+            VARPredictionResult(baseline_res.rmse, VARHyperParams(trend, maxlag))
         )
 
-    def get_var_res_by_country(ctry_df: pd.DataFrame, maxlag: int, countrycode: str, dependent_name: str, plot_res: bool, folds: int) -> CountryVARResult:
+    def get_var_res_by_country(ctry_df: pd.DataFrame, maxlag: int, trend: str, countrycode: str, dependent_name: str, plot_res: bool, folds: int) -> CountryVARResult:
         """TODO: Docstring Using KFold cross validation"""
 
         train_test_data = BaseModelTuning.create_train_test_data(ctry_df, folds)
 
-        fold_var_res = [BaseModelTuning.get_fold_var_res(data, maxlag, countrycode, dependent_name, i, plot_res) for i, data in enumerate(train_test_data)]
+        fold_var_res = [BaseModelTuning.get_fold_var_res(data, maxlag, trend, countrycode, dependent_name, i, plot_res) for i, data in enumerate(train_test_data)]
 
         fold_fully_stationary_list = [fr.is_fully_stationary for fr in fold_var_res]
 
@@ -312,26 +312,25 @@ class BaseModelTuning:
             )
         return res_by_fold
 
-    def extract_country_and_generate_var_res(countrycode: str, df: pd.DataFrame, maxlag: int, dependent_name: str, plot_res: bool, folds: int) -> CountryVARResult:
+    def extract_country_and_generate_var_res(countrycode: str, df: pd.DataFrame, maxlag: int, trend: str, dependent_name: str, plot_res: bool, folds: int) -> CountryVARResult:
         """Given a countrycode, dataframe containing multiple country data and var parameters creates CountryVARResult"""
         ctry_df = df.loc[df['countrycode'] == countrycode]
         ctry_df = ctry_df.drop(columns=["countrycode"])
 
-        var_res_by_country = BaseModelTuning.get_var_res_by_country(ctry_df, maxlag, countrycode, dependent_name, plot_res, folds)
+        var_res_by_country = BaseModelTuning.get_var_res_by_country(ctry_df, maxlag, trend, countrycode, dependent_name, plot_res, folds)
         return var_res_by_country
 
-    def get_var_res_by_dev_status(country_amount: int, dev_status: str, unique_countrycodes: list[str], df: pd.DataFrame, maxlag: int, dependent_name: str, plot_res: bool) -> DevStatusResult:
+    def get_var_res_by_dev_status(country_amount: int, dev_status: str, unique_countrycodes: list[str], df: pd.DataFrame, maxlag: int, trend: str, dependent_name: str, plot_res: bool) -> DevStatusResult:
         """TODO: Docstring"""
         folds = 4
-        countrys_res = [BaseModelTuning.extract_country_and_generate_var_res(code, df, maxlag, dependent_name, plot_res, folds) for code in unique_countrycodes]
+        countrys_res = [BaseModelTuning.extract_country_and_generate_var_res(code, df, maxlag, trend, dependent_name, plot_res, folds) for code in unique_countrycodes]
 
         res_by_fold = BaseModelTuning.calculate_fold_var_res(countrys_res, folds)
         
         return DevStatusResult(dev_status, country_amount, res_by_fold) 
 
-    def VAR_pipeline(df_list: list[pd.DataFrame], dependent_name: str, indep_names: list[str], plot_res: bool, export_csv: bool, export_json: bool) -> None:
+    def VAR_pipeline(df_list: list[pd.DataFrame], dependent_name: str, indep_names: list[str], plot_res: bool, export_name: str, export_csv: bool, export_json: bool, maxlag: int, trend: str) -> None:
         """TODO: Docstring"""
-        maxlag = 7
         res_df: pd.DataFrame = pd.DataFrame(columns = ['Development status', "Country amount", 'Mean RMSE', "Mean stationary itas", "Mean fully stationary", "Mean train length", "Mean test length"]) 
         dev_status_var_res_list = []
         for df in df_list:
@@ -340,7 +339,7 @@ class BaseModelTuning:
             unique_countrycodes = df["countrycode"].unique()
             country_amt = len(unique_countrycodes)
             
-            dev_stat_var_res = BaseModelTuning.get_var_res_by_dev_status(country_amt, dev_status, unique_countrycodes, df, maxlag, dependent_name, plot_res)
+            dev_stat_var_res = BaseModelTuning.get_var_res_by_dev_status(country_amt, dev_status, unique_countrycodes, df, maxlag, trend, dependent_name, plot_res)
             dev_status_var_res_list.append(dev_stat_var_res)
 
             #res_df = pd.concat([res_df, pd.DataFrame([
@@ -355,7 +354,7 @@ class BaseModelTuning:
             #        }])], ignore_index=True)
 
         if export_json:
-            ExportVARResults.save_json(asdict(VARExportClass(dependent_name, indep_names, dev_status_var_res_list)), "./Baseline_VAR dev status results.json")
+            ExportVARResults.save_json(asdict(VARExportClass(dependent_name, indep_names, dev_status_var_res_list)), f"./{export_str}_VAR dev status results.json")
 
         if plot_res:
             ExportVARResults.plot_dev_status_var_results(res_df)
@@ -367,7 +366,45 @@ class BaseModelTuning:
 if __name__ == "__main__":
     indep_vars =  ['rdana', 'rtfpna', 'emp', 'cda']
     pwt_by_dev_status_df_list = PWTDevStatusGenerator.subset_pwt_by_dev_stat(DevStatusLevel.MERGED_SUBSET, list(indep_vars))
-    VARModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, False, True)
+    #VARModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, False, True)
     
-    BaseModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, False, True)
     
+    #Baseline model
+    maxlag = 7
+    trend = 'c'
+    export_str = "Baseline"
+    BaseModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, export_str, False, True, maxlag, trend)
+
+    #TODO: Dynamically load these parameters from results JSON file (instead of hardcoded)
+    #Best Mode parameters model fold 4 (Developing)
+    maxlag_developing = 5
+    trend_developing = 'ctt'
+    export_str = "Developing"
+    BaseModelTuning.VAR_pipeline(
+        pwt_by_dev_status_df_list,
+        "gdp_growth",
+        indep_vars,
+        False,
+        export_str,
+        False,
+        True,
+        maxlag_developing,
+        trend_developing)
+
+    #Best Mode parameters model fold 4 (Least developed)
+    maxlag_least_dev = 1
+    trend_least_dev = 'c'
+    export_str = "Least developed"
+    BaseModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, export_str, False, True, maxlag_least_dev, trend_least_dev)
+
+    #Best Mode parameters model fold 4(Emerging)
+    maxlag_emerging = 2
+    trend_emerging = 'c'
+    export_str = "Emerging"
+    BaseModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, export_str, False, True, maxlag_emerging, trend_emerging)
+    
+    #Best Mode parameters model fold 4 (Developed) 
+    maxlag_developed = 1
+    trend_developed = 'c'
+    export_str = "Developed"
+    BaseModelTuning.VAR_pipeline(pwt_by_dev_status_df_list, "gdp_growth", indep_vars, False, export_str, False, True, maxlag_developed, trend_developed)
